@@ -1,3 +1,4 @@
+
 import React, {useState, useEffect} from 'react';
 import {
   View,
@@ -9,6 +10,7 @@ import {
   Dimensions,
   TextInput,
 } from 'react-native';
+import { FontFamily, Color, Padding, Border, FontSize } from '../../GlobalStyles';
 import {BaseUrl} from '../../Utils/BaseApi';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -76,60 +78,45 @@ const PrescriptionHistoryScreen = ({navigation, route}) => {
 
       <ScrollView>
         {filteredPrescriptions.map(prescription => (
-          <View key={prescription.id} style={styles.cardContainer}>
-            <View style={styles.card}>
-              <Image
-                source={require('../../assets/images/avator.png')}
-                style={styles.image}
-              />
-              <View style={styles.info}>
-                <Text style={styles.name}>{prescription.appointment?.first_name}</Text>
-                <View style={styles.hospitalRow}>
-                  <FontAwesome
-                    name="calendar"
-                    size={20}
-                    color="green"
-                    style={styles.icon}
-                  />
-                  <Text style={styles.hospital}>Date: {prescription.date}</Text>
-                </View>
-                <View style={styles.hospitalRow}>
-                  <FontAwesome
-                    name="calendar"
-                    size={20}
-                    color="red"
-                    style={styles.icon}
-                  />
-                  <Text style={styles.hospital}>
-                    Next Date: {prescription.next_appointment_date}
-                  </Text>
-                </View>
-                <Text style={styles.time}>
-                  Pharmacy: {prescription.pharmacy.name}
-                </Text>
-                <View style={styles.typeRow}>
-                  <FontAwesome
-                    name="user"
-                    size={20}
-                    color="#333"
-                    style={styles.icon}
-                  />
-                  <Text style={styles.type}>male</Text>
-                </View>
-              </View>
-            </View>
-            <View style={styles.actions}>
-              <TouchableOpacity
-                style={styles.prescriptionButton}
-                onPress={() =>
-                  navigation.navigate('Prescription Detail', {
-                    prescriptionId: prescription.id,
-                  })
-                }>
-                <Text style={styles.prescriptionText}>View Detail</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+            <View key={prescription.id} style={styles.cardContainer}>
+    <View style={styles.card}>
+      <Image 
+        source={prescription.patient?.image_url ? 
+          { uri: prescription.patient.image_url } : 
+          require('../../assets/images/avator.png')} 
+        style={styles.image} 
+      />
+      <View style={styles.info}>
+        <Text style={styles.name}>{prescription.patient?.name || 'Unknown Patient'}</Text>
+        
+        <View style={styles.detailRow}>
+          <FontAwesome name="calendar" size={16} color="#4CAF50" style={styles.icon} />
+          <Text style={styles.detailText}>Date: {prescription.date || 'N/A'}</Text>
+        </View>
+      
+        <View style={styles.detailRow}>
+          <FontAwesome name="calendar-check-o" size={16} color="#FF5252" style={styles.icon} />
+          <Text style={styles.detailText}>Next Visit: {prescription.next_appointment_date || 'Not scheduled'}</Text>
+        </View>
+        
+        <View style={styles.detailRow}>
+          <FontAwesome name="medkit" size={16} color="#2196F3" style={styles.icon} />
+          <Text style={styles.detailText}>Pharmacy: {prescription.pharmacy?.name || 'Not specified'}</Text>
+        </View>
+        
+       
+      </View>
+    </View>
+    
+    <TouchableOpacity 
+      style={styles.viewButton}
+      onPress={() => navigation.navigate('Prescription Detail', { prescriptionId: prescription.id })}
+      activeOpacity={0.8}
+    >
+      <Text style={styles.viewButtonText}>View Full Prescription</Text>
+     
+    </TouchableOpacity>
+  </View>
         ))}
       </ScrollView>
     </View>
@@ -188,45 +175,62 @@ const styles = StyleSheet.create({
   },
 
   cardContainer: {
+    padding:10,
     marginBottom: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#fff',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    marginTop:6
   },
   card: {
     flexDirection: 'row',
-    padding: 16,
-    borderRadius: 10,
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 2,
+  
   },
   image: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginRight: 16,
+    width: 100,
+    height: 100,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
   },
   info: {
     flex: 1,
+    marginLeft: 15,
   },
   name: {
     fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 4,
-    color: '#222831',
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
   },
-  hospitalRow: {
+  detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+  
   },
-  hospital: {
-    marginLeft: 6,
-    color: '#666',
+  detailText: {
+    marginLeft: 8,
+    color: '#555',
+    fontSize: 14,
   },
-  time: {
-    color: '#666',
-    marginBottom: 4,
+  viewButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 6,
+    borderRadius: 6,
+    margin:4,
+    alignSelf: 'flex-end',
+    backgroundColor: Color.blue1,
+   
+  },
+  viewButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    marginRight: 8,
   },
   typeRow: {
     flexDirection: 'row',

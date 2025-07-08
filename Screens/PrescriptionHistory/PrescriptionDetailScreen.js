@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Touchable, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Touchable, TouchableOpacity, Image } from 'react-native';
 import { BaseUrl } from '../../Utils/BaseApi';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import { Color } from '../../GlobalStyles';
 
 const PrescriptionDetailScreen = ({ route, navigation }) => {
   const { prescriptionId } = route.params;
@@ -44,17 +45,25 @@ const PrescriptionDetailScreen = ({ route, navigation }) => {
   }
 
   return (
-    <View style={{ flex: 1 }}>
+ 
     <ScrollView style={styles.container}>
+       <View style={styles.header}>
       <TouchableOpacity  onPress={() => navigation.goBack()} style={styles.backButton}>
         <FontAwesome name="chevron-left" size={20} color="#333" style={styles.backIcon} />
         <Text style={styles.title}>Prescription Details</Text>
       </TouchableOpacity>
-      
-
+      </View>
+ <View style={styles.cardContainer}>
+  <Image 
+        source={prescriptionDetails.patient?.image_url ? 
+          { uri: prescriptionDetails.patient.image_url } : 
+          require('../../assets/images/avator.png')} 
+        style={styles.image} 
+      />
+       <View style={styles.card}>
       {/* Patient and Pharmacy Info */}
       <View style={styles.infoContainer}>
-        <FontAwesome name="user" size={20} color="#333" style={styles.icon} />
+        <FontAwesome name="user" size={20} color="#4CAF50" style={styles.icon} />
         <Text style={styles.label}>Patient: {prescriptionDetails.patient_name.name}</Text>
       </View>
       <View style={styles.infoContainer}>
@@ -66,38 +75,27 @@ const PrescriptionDetailScreen = ({ route, navigation }) => {
         <Text style={styles.label}>Next Appointment Date: {prescriptionDetails.next_appointment_date}</Text>
       </View>
       <View style={styles.infoContainer}>
-        <FontAwesome name="building" size={20} color="#333" style={styles.icon} />
+        <FontAwesome name="building" size={20} color="#2196F3" style={styles.icon} />
         <Text style={styles.label}>Pharmacy: {prescriptionDetails.pharmacy.name}</Text>
-      </View>
-
-      {/* Medications Section */}
-      <View style={styles.section}>
-  <Text style={styles.sectionTitle}>Medications</Text>
-  {prescriptionDetails.medications.map((med, index) => (
-    <View key={index} style={styles.card}>
-      <Text style={styles.medicineName}>{med.medicine_name}</Text>
-      
-      <View style={styles.row}>
-        <FontAwesome name="medkit" size={16} color="#1f6f78" style={styles.iconLeft} />
-        <Text style={styles.detailText}>Dosage: {med.dosage}</Text>
-      </View>
-
-      <View style={styles.row}>
-        <FontAwesome name="repeat" size={16} color="#1f6f78" style={styles.iconLeft} />
-        <Text style={styles.detailText}>Frequency: {med.frequency}</Text>
-      </View>
-
-      <View style={styles.row}>
-        <FontAwesome name="clock-o" size={16} color="#1f6f78" style={styles.iconLeft} />
-        <Text style={styles.detailText}>Duration: {med.duration}</Text>
-      </View>
-    </View>
-  ))}
+      </View></View>
 </View>
+      {/* Medications Section */}
+   <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Medications</Text>
+         <View style={styles.cardContainer}>
+        {prescriptionDetails.medications.map((med, index) => (
+          <View key={index} style={styles.medicationItem}>
+            <Text style={styles.medicationText}>Name: {med.medicine_name}</Text>
+            <Text style={styles.medicationText}>Dosage: {med.dosage}</Text>
+            <Text style={styles.medicationText}>Frequency: {med.frequency}</Text>
+            <Text style={styles.medicationText}>Duration: {med.duration}</Text>
+          </View>
+        ))}</View>
+      </View>
 
 
     </ScrollView>
-    </View>
+   
   );
 };
 
@@ -108,11 +106,32 @@ const styles = StyleSheet.create({
     padding: 16,
 
   },
+   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    marginBottom: 20,
+  },
   loading: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  cardContainer: {
+  padding: 12,
+ 
+  marginBottom: 16,
+  borderRadius: 12,
+  overflow: 'hidden',
+  backgroundColor: Color.secondary,
+  elevation: 3,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.1,
+  shadowRadius: 6,
+  flexDirection: 'row',
+  flexWrap: 'wrap', // 👈 Add this line
+},
   errorText: {
     color: 'red',
     textAlign: 'center',
@@ -122,43 +141,48 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1f6f78',
+   
+    color: '#333',
     marginBottom: 15,
     textAlign: 'center',
   },
-  infoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  icon: {
+
+icon: {
     marginRight: 10,
   },
   label: {
     fontSize: 16,
-    color: '#333',
+    color: '#666',
   },
   section: {
     marginTop: 20,
+
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1f6f78',
+    color: '#333',
     marginBottom: 10,
     textAlign: 'left',
   },
-  medicationItem: {
+ 
+card: {
+  flex: 1,
+  gap:8,
+  justifyContent: 'center',
+  marginBottom:10
+},
+ 
+  infoContainer: {
+     flex: 1,
+    marginLeft: 10,
+    flexDirection:'row',
+    
+  },
+   medicationItem: {
     backgroundColor: '#ffffff',
     padding: 15,
+    width:'100%',
     borderRadius: 8,
     marginBottom: 10,
     shadowColor: '#000',
@@ -169,21 +193,9 @@ const styles = StyleSheet.create({
   },
   medicationText: {
     fontSize: 16,
-    color: '#333',
+    color: '#666',
     marginBottom: 5,
   },
-  card: {
-    backgroundColor: '#eaf6f6',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  
   medicineName: {
     fontSize: 18,
     fontWeight: 'bold',

@@ -7,6 +7,7 @@ import { useAuth } from '../Components/AuthContext';
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BaseUrl } from "../Utils/BaseApi";
+import { FontFamily, Color, Padding, Border, FontSize } from '../GlobalStyles';
 const CustomDrawerContent = (props) => {
     const { logout } = useAuth();
     const { user } = useAuth();
@@ -59,7 +60,7 @@ const CustomDrawerContent = (props) => {
   return (
     <DrawerContentScrollView {...props}>
       {/* User Info Section */}
-      <View style={{ padding: 20, backgroundColor: '#007cb9' }}>
+      <View style={{ padding: 20, backgroundColor: Color.blue1 }}>
         <Image
           source={{
             uri: user?.image_url || 'https://via.placeholder.com/100',}} // Replace with dynamic URL

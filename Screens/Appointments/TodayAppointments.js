@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   TextInput,
   Alert,
   Linking,
+  ActivityIndicator,
 } from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -30,6 +31,7 @@ const TodayAppointments = () => {
   const [isDatePickerVisible, setIsDatePickerVisible] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [newDate, setNewDate] = useState(new Date());
+   const [isLoading, setIsLoading] = useState(true); // Added loading state
   const getStatusColor = status => {
     switch (status) {
       case 1:
@@ -51,36 +53,33 @@ const TodayAppointments = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const getTodayAppointments = async () => {
+ const getTodayAppointments = useCallback(async () => {
     try {
+      setIsLoading(true);
       const token = await AsyncStorage.getItem('userToken');
       const response = await axios.get(
         `${BaseUrl}/get-today-appointments-bydoctor`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-
       setAppointments(response.data);
-      console.log("todayyyy apppointmentsssss", response.data)
-      console.log('Today Appointments:', response.data);
     } catch (error) {
-      console.error('Error fetching appointment:', error);
+      console.error('Error fetching appointments:', error);
+    } finally {
+      setIsLoading(false);
     }
-  };
-  const getStatusStyle = status => {
+  }, []);
+  const getStatusStyle = useCallback((status)  => {
     return parseInt(status) === 1
       ? styles.confirmedStatus
       : styles.pendingStatus;
-  };
+  }, [])
 
-  const getTypeStatus = types => {
-    return parseInt(types) === 1
-      ? styles.videoConsultation
-      : styles.onSiteAppointment;
-  };
+const getTypeStatus = useCallback((types) => {
+  const type = parseInt(types);
+  if (type === 1) return styles.onSiteAppointment;
+  if (type === 2) return styles.videoConsultation;
+  return styles.voiceConsultation; // For type 3 or any other fallback
+}, [])
 
   useEffect(() => {
 const filtered = appointments.filter(appointment =>
@@ -108,7 +107,7 @@ const filtered = appointments.filter(appointment =>
     );
   };
 
-  const handleConfirmAppointment = async appointment => {
+  const handleConfirmAppointment =useCallback( async (appointment) => {
     console.log('Starting appointment confirmation:', appointment);
     try {
       const token = await AsyncStorage.getItem('userToken');
@@ -155,9 +154,9 @@ const filtered = appointments.filter(appointment =>
         'An error occurred while confirming the appointment.',
       );
     }
-  };
+    }, []);
 
-  const saveZoomMeeting = async appointment => {
+  const saveZoomMeeting = useCallback(async (appointment) => {
     try {
       console.log('saveZoomMeeting called for:', appointment);
 
@@ -195,9 +194,9 @@ const filtered = appointments.filter(appointment =>
         'An error occurred while creating the Zoom meeting.',
       );
     }
-  };
+    }, []);
 
-  const saveVoiceZoomMeeting = async appointment => {
+  const saveVoiceZoomMeeting = useCallback(async (appointment) => {
     try {
       console.log('saveZoomMeeting called for:', appointment);
 
@@ -235,9 +234,10 @@ const filtered = appointments.filter(appointment =>
         'An error occurred while creating the Zoom meeting.',
       );
     }
-  };
+  },[]);
 
-  const openMeetingLink = async appointment => {
+
+  const openMeetingLink =useCallback(async (appointment) => {
     try {
       const token = await AsyncStorage.getItem('userToken');
       const response = await axios.post(
@@ -275,9 +275,10 @@ const filtered = appointments.filter(appointment =>
         'An error occurred while fetching the meeting link.',
       );
     }
-  };
+  },[]);
 
-  const handleRescheduleAppointment = async newDate => {
+
+  const handleRescheduleAppointment = useCallback(async (newDate) => {
     try {
       const token = await AsyncStorage.getItem('userToken');
       const formattedNewDate = moment(newDate).format('YYYY-MM-DD');
@@ -309,7 +310,7 @@ const filtered = appointments.filter(appointment =>
         'An error occurred while rescheduling the appointment.',
       );
     }
-  };
+  }, [])
 
   const showDatePicker = appointment => {
     setSelectedAppointment(appointment);
@@ -331,6 +332,43 @@ const filtered = appointments.filter(appointment =>
     navigation.navigate('Join Meet', {meetingId});
     
   };
+  useEffect(() => {
+    // Filter appointments based on search query across multiple fields
+    const filtered = appointments.filter(appointment => {
+        const query = searchQuery.toLowerCase();
+        return (
+            appointment.user?.name?.toLowerCase().includes(query) ||
+            appointment.date.toLowerCase().includes(query) ||
+            appointment.time.toLowerCase().includes(query)
+        );
+    });
+    setFilteredAppointments(filtered);
+}, [searchQuery, appointments]); // Add appointments to dependencies
+const renderAppointmentCard = useCallback((appointment) => (
+    <View key={appointment.id} style={styles.cardContainer}>
+      {/* Card content - same as before */}
+    </View>
+  ), []);
+ const renderContent = () => {
+    if (isLoading) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#274A8A" />
+        </View>
+      );
+    }
+
+    if (filteredAppointments.length === 0) {
+      return (
+        <Text style={styles.noAppointmentsText}>
+          {searchQuery ? 'No results found' : 'No Appointments Today'}
+        </Text>
+      );
+    }
+
+    return filteredAppointments.map(renderAppointmentCard);
+  };
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.searchContainer}>
@@ -355,16 +393,12 @@ const filtered = appointments.filter(appointment =>
       </View>
 
       {/* Check if there are no appointments */}
-      {(filteredAppointments.length > 0 ? filteredAppointments : appointments)
-        .length === 0 ? (
-        <View style={styles.noAppointmentsContainer}>
-          <Text style={styles.noAppointmentsText}>No appointments today</Text>
-        </View>
+       {filteredAppointments.length === 0 ? (
+        <Text style={styles.noAppointmentsText}>
+          {searchQuery ? 'No results found' : 'Loading....'}
+        </Text>
       ) : (
-        (filteredAppointments.length > 0
-          ? filteredAppointments
-          : appointments
-        ).map(appointment => (
+        filteredAppointments.map(appointment => (
           <View key={appointment.id} style={styles.cardContainer}>
             <View style={styles.card}>
             <Image
@@ -393,6 +427,7 @@ const filtered = appointments.filter(appointment =>
                 </View>
 
                 {/* Time */}
+                {Number(appointment.types) !== 1 && (
                 <View style={styles.infoRow}>
                   <Icon
                     name="time-outline"
@@ -404,30 +439,31 @@ const filtered = appointments.filter(appointment =>
                     {moment(appointment.time, 'HH:mm').format('hh:mm A')}
                   </Text>
                 </View>
-
+                )}
                 {/* Type */}
-                <View style={styles.infoRow}>
-                  <Icon
-                    name="call-outline"
-                    size={18}
-                    color="#888"
-                    style={styles.icon}
-                  />
-                  <Text
-                    style={
-                      appointment.types === 2
-                        ? styles.videoConsultation
-                        : appointment.types === 3
-                        ? styles.voiceConsultation
-                        : styles.onSiteAppointment
-                    }>
-                    {appointment.types === 2
-                      ? 'Video Consultation'
-                      : appointment.types === 3
-                      ? 'Voice Consultation'
-                      : 'On-site Appointment'}
-                  </Text>
-                </View>
+             {/* <View style={styles.infoRow}>
+              <Icon
+                name="call-outline"
+                size={18}
+                color="#888"
+                style={styles.icon}
+              />
+              <Text
+                style={
+                  parseInt(appointment.types) === 2
+                    ? styles.videoConsultation
+                    : parseInt(appointment.types) === 3
+                    ? styles.voiceConsultation
+                    : styles.onSiteAppointment
+                }
+              >
+                {parseInt(appointment.types) === 2
+                  ? 'Video Consultation'
+                  : parseInt(appointment.types) === 3
+                  ? 'Voice Consultation'
+                  : 'On-site Appointment'}
+              </Text>
+            </View> */}
 
                 {/* Status */}
                 <View style={styles.infoRow}>
@@ -448,34 +484,35 @@ const filtered = appointments.filter(appointment =>
                 </View>
 
                 <View style={styles.infoRow}>
-                  <Icon
-                    name={
-                      appointment.types === 1
-                        ? 'location-outline'
-                        : appointment.types === 2
-                        ? 'camera-outline'
-                        : 'call-outline'
-                    }
-                    size={18}
-                    color={
-                      appointment.types === 1
-                        ? 'green'
-                        : appointment.types === 2
-                        ? 'blue'
-                        : 'orange'
-                    }
-                    style={styles.icon}
-                  />
-                  <Text style={getTypeStatus(appointment.types)}>
-                    {appointment.types === 1
-                      ? 'On Site Appointment'
-                      : appointment.types === 2
-                      ? 'Video Consultation'
-                      : 'Voice Consultation'}
-                  </Text>
-                </View>
-              </View>
+              <Icon
+                name={
+                  parseInt(appointment.types) === 1
+                    ? 'location-outline'
+                    : parseInt(appointment.types) === 2
+                    ? 'camera-outline'
+                    : 'call-outline'
+                }
+                size={18}
+                color={
+                  parseInt(appointment.types) === 1
+                    ? 'green'
+                    : parseInt(appointment.types) === 2
+                    ? '#5FC3E4'
+                    : 'orange'
+                }
+                style={styles.icon}
+              />
+              <Text style={getTypeStatus(appointment.types)}>
+                {parseInt(appointment.types) === 1
+                  ? 'On Site Appointment'
+                  : parseInt(appointment.types) === 2
+                  ? 'Video Consultation'
+                  : 'Voice Consultation'}
+              </Text>
             </View>
+          </View>
+              </View>
+           
 
             {/* Actions below the card */}
             <View style={styles.actions}>
@@ -483,7 +520,7 @@ const filtered = appointments.filter(appointment =>
                 <TouchableOpacity
                   style={[styles.confirmButton, styles.button]}
                   onPress={() => confirmAppointmentPrompt(appointment)}>
-                  <Text style={styles.buttonText}>Confirmation</Text>
+                  <Text style={styles.buttonText}>Confirm</Text>
                 </TouchableOpacity>
               )}
               {parseInt(appointment.status) === 0 && (
@@ -512,7 +549,7 @@ const filtered = appointments.filter(appointment =>
           </View>
         ))
       )}
-
+  {renderContent()}
       {isDatePickerVisible && (
         <DateTimePicker
           value={newDate}
@@ -590,11 +627,19 @@ const styles = StyleSheet.create({
   },
   videoConsultation: {
     fontSize: 14,
-    color: 'green',
+    color: '#5FC3E4',
+    fontWeight: 'bold',
+  
+  },
+  voiceConsultation:{
+     fontSize: 14,
+    color: 'orange',
+    fontWeight:'bold'
   },
   onSiteAppointment: {
     fontSize: 14,
-    color: 'blue',
+    color: 'green',
+    fontWeight:'bold'
   },
   infoRow: {
     flexDirection: 'row',
@@ -608,6 +653,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginTop: 10,
     justifyContent: 'space-between',
+    marginBottom:15
   },
   button: {
     flex: 1,
@@ -640,12 +686,7 @@ const styles = StyleSheet.create({
     color: 'red',
     fontWeight: 'bold',
   },
-  videoConsultation: {
-    fontSize: 14,
-    color: 'green',
-    fontWeight: 'bold',
-    marginTop: 5,
-  },
+
   noAppointmentsContainer: {
     justifyContent: 'center',
     alignItems: 'center',

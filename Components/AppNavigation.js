@@ -30,6 +30,9 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 const Drawer = createDrawerNavigator();
 import CustomDrawerContent from "./CustomDrawerContent ";
 import JoinMeetingScreen from "../Screens/ZoomMeet/JoinMeetScreen";
+import { FontFamily, Color, Padding, Border, FontSize } from '../GlobalStyles';
+
+import HomeWithTabs from "../Screens/HomeWithTabs";
 
 const AuthNavigator = () => (
   <AuthStack.Navigator>
@@ -43,29 +46,53 @@ const AuthNavigator = () => (
 // Main app stack for logged-in users
 const AppStack = createNativeStackNavigator();
 const AppNavigator = () => (
-  
-  <Drawer.Navigator initialRouteName="Home"
-  drawerContent={(props) => <CustomDrawerContent {...props} />}>
-  <Drawer.Screen name="Home" component={HomeScreen}
+
+  <Drawer.Navigator 
+    initialRouteName="Home"
+    drawerContent={(props) => <CustomDrawerContent {...props} />}
+    screenOptions={{
+          drawerActiveTintColor: Color.blue1, // set your preferred color
+    drawerInactiveTintColor: '#666',
+    drawerActiveBackgroundColor: Color.secondary,
+      // Common styles for all drawer items
+      drawerItemStyle: {
+     display:'flex',
+     gap:10,
+    
+      },
+      drawerLabelStyle: {
+        // Adjust this value based on your icon size
+        fontSize: 12,
+      },
+      drawerIconContainerStyle: {
+        width: 40, // Fixed width for icon container
+      }
+    }}
+  >
+
+<Drawer.Screen name="Home" component={HomeWithTabs} 
+
    options={{
     headerShown: false,
     drawerIcon: ({ color, size }) => (
-      <FontAwesome name="home" size={size} color={color} />
+      <FontAwesome name="home" size={18} color={color} />
     ),
   }} 
    />
-    <Drawer.Screen name="My Profile" component={ProfileScreen}
+
+
+    <Drawer.Screen name=" My Profile" component={ProfileScreen}
     options={{
       headerShown: false,
       drawerIcon: ({ color, size }) => (
-        <FontAwesome name="user" size={size} color={color} />
+        <FontAwesome name="user" size={19} color={color} />
       ),
     }}  />
     <Drawer.Screen name="Today Appointments" component={TodayAppointments}
     options={{
       headerShown: true,
       drawerIcon: ({ color, size }) => (
-        <FontAwesome name="clock-o" size={size} color={color} />
+        <FontAwesome name="clock-o" size={20} color={color} />
       ),
     }} 
    />
@@ -73,14 +100,14 @@ const AppNavigator = () => (
    options={{
     headerShown: false,
     drawerIcon: ({ color, size }) => (
-      <FontAwesome name="calendar" size={size} color={color} />
+      <FontAwesome name="calendar" size={20} color={color} />
     ),
   }}  />
     <Drawer.Screen name="My Patients" component={MyPatients}
   options={{
     headerShown: true,
     drawerIcon: ({ color, size }) => (
-      <FontAwesome name="users" size={size} color={color} />
+      <FontAwesome name="users" size={18} color={color} />
     ),
   }}  />
     <Drawer.Screen name="Available Medicines" component={AvailableMedicine}
@@ -103,12 +130,9 @@ const AppNavigator = () => (
      drawerItemStyle: { display: 'none' },
     
    }} />
-    <Drawer.Screen name="My Earning" component={MyEarningScreen}
+    <Drawer.Screen name=" My Earning" component={MyEarningScreen}
   options={{
-    headerShown: false,
-    drawerIcon: ({ color, size }) => (
-      <FontAwesome name="euro" size={size} color={color} />
-    ),
+    drawerItemStyle: { display: 'none' },
   }}  />
     <Drawer.Screen name="Withdraw" component={WidthdrawScreen}
    options={{
@@ -126,11 +150,11 @@ const AppNavigator = () => (
      drawerItemStyle: { display: 'none' },
     
    }} />
-   <Drawer.Screen name="Prescription History" component={PrescriptionHistoryScreen}
+   <Drawer.Screen name=" Prescription History" component={PrescriptionHistoryScreen}
    options={{
      headerShown: false,
      drawerIcon: ({ color, size }) => (
-       <FontAwesome name="history" size={size} color={color} />
+       <FontAwesome name="history" size={20} color={color} />
      ),
    }} />
     <Drawer.Screen name="Prescription Detail" component={PrescriptionDetailScreen}
@@ -146,7 +170,7 @@ const AppNavigator = () => (
 const Appnavigation  = () => {
     const { user, loading } = useAuth(); // Get user and loading state from AuthContext
 
-    // Debugging - Check user state from AuthContext
+
     // Debugging - Check user state from AuthContext
   console.log("AuthContext:", { user, loading });
 
