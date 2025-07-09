@@ -501,8 +501,8 @@ paddingRight:20
 
 notificationBadge: {
   position: 'absolute',
-  right: 2,
-  top: 2,
+  right: 15,
+  top: -5,
   backgroundColor: 'red',
   borderRadius: 10,
   width: 18,
@@ -513,8 +513,10 @@ notificationBadge: {
 },
 
 notificationText: {
-  color: 'white',
-  fontSize: 10,
+  color: '#666',
+  alignItems: 'center',
+  textAlign:'center',
+  fontSize: 14,
   fontWeight: 'bold',
 },
 

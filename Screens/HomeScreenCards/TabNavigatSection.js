@@ -33,7 +33,7 @@ const Tab = createBottomTabNavigator();
         },
       }}>
       <Tab.Screen
-        name="Home"
+        name=" Home "
         component={HomeScreen}
         options={{
           drawerItemStyle: {display: 'none'},

@@ -154,19 +154,18 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   header: {
-    backgroundColor: '#274A8A',
+    backgroundColor: Color.blue1,
     flexDirection: 'row',
-    justifyContent: 'space-between',
+ 
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    position: 'relative',
+    paddingVertical: 20,
+   gap: 50,
     textAlign: 'center',
-    justifyContent: 'center',
+  
   },
   backButton: {
-    position: 'absolute',
-    left: 10,
+    
   },
   headerTitle: {
     color: '#fff',

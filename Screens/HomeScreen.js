@@ -14,7 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Color } from '../GlobalStyles';
 import TopBar from './HomeScreenCards/TopBar';
 import ProfileLocationSection from './HomeScreenCards/ProfileLocation';
-import UpcomingAppointmentCard from './HomeScreenCards/UpcommingAppointmentCard';
+import UpcomingAppointmentCard from './HomeScreenCards/UpcomingAppointmentCard';
 import MetricsGrid from './HomeScreenCards/MetricsGrid';
 import ServicesGrid from './HomeScreenCards/ServicesGrid';
 import LatestBlogs from './HomeScreenCards/LatestBlogs';
@@ -73,25 +73,31 @@ const fetchData = useCallback(async () => {
     fetchData();
   }, [fetchData]);
 
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchData();
   }, [fetchData]);
  
 
+const fetchDoctor = useCallback(async () => {
+  try {
+    const token = await AsyncStorage.getItem('userToken');
+    let endpoint =
+      user?.type === 'doctor'
+        ? '/get-doctor-app-profile'
+        : '/get-hospitals-profile';
 
-  const fetchDoctor = async () => {
-    try {
-      const token = await AsyncStorage.getItem('userToken');
-      let endpoint = user?.type === 'doctor' ? '/get-doctor-app-profile' : '/get-hospitals-profile';
-      const response = await axios.get(`${BaseUrl}${endpoint}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setDoctor(user?.type === 'doctor' ? response.data : response.data[0]);
-    } catch (error) {
-      throw error;
-    }
-  };
+    const response = await axios.get(`${BaseUrl}${endpoint}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    setDoctor(user?.type === 'doctor' ? response.data : response.data[0]);
+  } catch (error) {
+    throw error;
+  }
+}, [user]);
+
 
 const countAppointments = useCallback(async () => {
     const token = await AsyncStorage.getItem('userToken');

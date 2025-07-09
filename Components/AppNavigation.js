@@ -81,7 +81,7 @@ const AppNavigator = () => (
    />
 
 
-    <Drawer.Screen name=" My Profile" component={ProfileScreen}
+    <Drawer.Screen name="My Profile" component={ProfileScreen}
     options={{
       headerShown: false,
       drawerIcon: ({ color, size }) => (

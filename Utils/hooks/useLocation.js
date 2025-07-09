@@ -8,47 +8,47 @@ const useLocation = () => {
   const [locationError, setLocationError] = useState(null);
 
   useEffect(() => {
-    const getCurrentLocation = async () => {
-      try {
-        const location = await GetLocation.getCurrentPosition({
-          enableHighAccuracy: true,
-          timeout: 15000,
-        });
-
+  const getCurrentLocation = () => {
+    GetLocation.getCurrentPosition({
+      enableHighAccuracy: true,
+      timeout: 60000,
+    })
+      .then(location => {
         const { latitude, longitude } = location;
         getCityNameFromCoords(latitude, longitude);
-      } catch (error) {
-        setCityName('Location unavailable');
-        setLocationError(error.message);
+      })
+      .catch(error => {
+        console.warn(error.code, error.message);
+      });
+  };
+
+   const googleMapsApiKey = Platform.OS === 'android'
+  ? getSetting('android_sdk_api_key')
+  : getSetting('ios_sdk_api_key');
+  const getCityNameFromCoords = async (latitude, longitude) => {
+const API_KEY = googleMapsApiKey;
+
+ console.log(" API key",API_KEY )
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${API_KEY}`;
+
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      console.log("Google Maps API response", data);
+      if (data.results.length > 0) {
+        const cityName = data.results[0].address_components.find(component =>
+          component.types.includes('locality'),
+        ).long_name;
+        setCityName(cityName);
+         console.log("give me city name", cityName)
+      } else {
+        setCityName('City not found');
       }
-    };
-
-    const getCityNameFromCoords = async (latitude, longitude) => {
-      try {
-        const API_KEY =
-          Platform.OS === 'android'
-            ? getSetting('android_sdk_api_key')
-            : getSetting('ios_sdk_api_key');
-
-        const response = await fetch(
-          `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${API_KEY}`
-        );
-        const data = await response.json();
-
-        if (data.results.length > 0) {
-          const city =
-            data.results[0].address_components.find((c) =>
-              c.types.includes('locality')
-            )?.long_name;
-          setCityName(city || 'City not found');
-        } else {
-          setCityName('City not found');
-        }
-      } catch (error) {
-        console.error('Geocoding error:', error);
-        setLocationError('Failed to fetch city');
-      }
-    };
+     
+    } catch (error) {
+      console.error('Error in reverse geocoding: ', error);
+    }
+  };
 
     getCurrentLocation();
   }, []);

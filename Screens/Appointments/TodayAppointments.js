@@ -278,72 +278,87 @@ const filtered = appointments.filter(appointment =>
   },[]);
 
 
-  const handleRescheduleAppointment = useCallback(async (newDate) => {
-    try {
-      const token = await AsyncStorage.getItem('userToken');
-      const formattedNewDate = moment(newDate).format('YYYY-MM-DD');
+const handleRescheduleAppointment = useCallback(async (newDate) => {
+  if (!selectedAppointment || !selectedAppointment.id) {
+    console.warn('Selected appointment is null or missing ID');
+    Alert.alert('Error', 'No appointment selected for rescheduling.');
+    return;
+  }
 
-      const response = await axios.post(
-        `${BaseUrl}/update-appointment-date`,
-        {
-          appointment_id: selectedAppointment.id,
-          new_date: formattedNewDate,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-      console.log(newDate);
+  try {
+    const token = await AsyncStorage.getItem('userToken');
+    const formattedNewDate = moment(newDate).format('YYYY-MM-DD');
 
-      if (response.data.success) {
-        Alert.alert('Success', 'Appointment rescheduled successfully!');
-        getTodayAppointments(); // Fetch updated appointments
-      } else {
-        Alert.alert('Error', 'Failed to reschedule appointment.');
+    const response = await axios.post(
+      `${BaseUrl}/update-appointment-date`,
+      {
+        appointment_id: selectedAppointment.id,
+        new_date: formattedNewDate,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       }
-    } catch (error) {
-      console.error('Error rescheduling appointment:', error);
-      Alert.alert(
-        'Error',
-        'An error occurred while rescheduling the appointment.',
-      );
+    );
+
+    console.log('Rescheduled to:', newDate);
+
+    if (response.data.success) {
+      Alert.alert('Success', 'Appointment rescheduled successfully!');
+      getTodayAppointments(); // Refresh updated list
+    } else {
+      Alert.alert('Error', 'Failed to reschedule appointment.');
     }
-  }, [])
+  } catch (error) {
+    console.error('Error rescheduling appointment:', error);
+    Alert.alert(
+      'Error',
+      'An error occurred while rescheduling the appointment.'
+    );
+  }
+}, [selectedAppointment]); // 👈 Add dependency
+
 
   const showDatePicker = appointment => {
     setSelectedAppointment(appointment);
     setIsDatePickerVisible(true);
   };
 
-  const onDateChange = (event, selectedDate) => {
-    if (selectedDate) {
-      const formattedDate = moment(selectedDate).format('YYYY-MM-DD'); // Format the selected date
-      setIsDatePickerVisible(false); // Hide date picker
-      setNewDate(formattedDate); // Update the newDate state
+ const onDateChange = (event, selectedDate) => {
+  if (selectedDate) {
+    setIsDatePickerVisible(false);
+    setNewDate(selectedDate); // ✅ Keep Date object
 
-      if (selectedAppointment) {
-        handleRescheduleAppointment(formattedDate); // Pass the formatted new date
-      }
+    if (selectedAppointment) {
+      const formattedDate = moment(selectedDate).format('YYYY-MM-DD');
+      handleRescheduleAppointment(formattedDate);
     }
-  };
+  }
+};
+
   const handleJoinMeet = meetingId => {
     navigation.navigate('Join Meet', {meetingId});
     
   };
-  useEffect(() => {
-    // Filter appointments based on search query across multiple fields
-    const filtered = appointments.filter(appointment => {
-        const query = searchQuery.toLowerCase();
-        return (
-            appointment.user?.name?.toLowerCase().includes(query) ||
-            appointment.date.toLowerCase().includes(query) ||
-            appointment.time.toLowerCase().includes(query)
-        );
-    });
-    setFilteredAppointments(filtered);
-}, [searchQuery, appointments]); // Add appointments to dependencies
+useEffect(() => {
+  const query = searchQuery?.toLowerCase() || '';
+
+  const filtered = appointments.filter(appointment => {
+    const name = appointment.user?.name?.toLowerCase() || '';
+    const date = appointment.date?.toLowerCase() || '';
+    const time = appointment.time?.toLowerCase() || '';
+
+    return (
+      name.includes(query) ||
+      date.includes(query) ||
+      time.includes(query)
+    );
+  });
+
+  setFilteredAppointments(filtered);
+}, [searchQuery, appointments]);
+ // Add appointments to dependencies
 const renderAppointmentCard = useCallback((appointment) => (
     <View key={appointment.id} style={styles.cardContainer}>
       {/* Card content - same as before */}
@@ -373,7 +388,7 @@ const renderAppointmentCard = useCallback((appointment) => (
     <ScrollView style={styles.container}>
       <View style={styles.searchContainer}>
         <TouchableOpacity
-          onPress={() => navigation.navigate('Home')}
+          onPress={() => navigation.navigate(' Home ')}
           style={styles.backButton}>
           <FontAwesome name="chevron-left" size={20} color="#666" />
         </TouchableOpacity>
@@ -392,13 +407,8 @@ const renderAppointmentCard = useCallback((appointment) => (
         />
       </View>
 
-      {/* Check if there are no appointments */}
-       {filteredAppointments.length === 0 ? (
-        <Text style={styles.noAppointmentsText}>
-          {searchQuery ? 'No results found' : 'Loading....'}
-        </Text>
-      ) : (
-        filteredAppointments.map(appointment => (
+     {filteredAppointments.length > 0 &&
+  filteredAppointments.map(appointment => (
           <View key={appointment.id} style={styles.cardContainer}>
             <View style={styles.card}>
             <Image
@@ -441,29 +451,7 @@ const renderAppointmentCard = useCallback((appointment) => (
                 </View>
                 )}
                 {/* Type */}
-             {/* <View style={styles.infoRow}>
-              <Icon
-                name="call-outline"
-                size={18}
-                color="#888"
-                style={styles.icon}
-              />
-              <Text
-                style={
-                  parseInt(appointment.types) === 2
-                    ? styles.videoConsultation
-                    : parseInt(appointment.types) === 3
-                    ? styles.voiceConsultation
-                    : styles.onSiteAppointment
-                }
-              >
-                {parseInt(appointment.types) === 2
-                  ? 'Video Consultation'
-                  : parseInt(appointment.types) === 3
-                  ? 'Voice Consultation'
-                  : 'On-site Appointment'}
-              </Text>
-            </View> */}
+   
 
                 {/* Status */}
                 <View style={styles.infoRow}>
@@ -536,7 +524,14 @@ const renderAppointmentCard = useCallback((appointment) => (
                   parseInt(appointment.types) === 3) && (
                   <TouchableOpacity
                     style={[styles.meetButton, styles.button]}
-                    onPress={() => handleJoinMeet(appointment.meet.id)}>
+                    onPress={() => {
+  if (appointment.meet?.id) {
+    handleJoinMeet(appointment.meet.id);
+  } else {
+    Alert.alert('Error', 'Meeting link not available yet.');
+  }
+}}
+>
                     <Text style={styles.buttonText}>
                       {parseInt(appointment.types) === 2
                         ? 'Join Video Call'
@@ -547,8 +542,8 @@ const renderAppointmentCard = useCallback((appointment) => (
                 )}
             </View>
           </View>
-        ))
-      )}
+        ))}
+      
   {renderContent()}
       {isDatePickerVisible && (
         <DateTimePicker

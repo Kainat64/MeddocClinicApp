@@ -14,33 +14,63 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import LinearGradient from 'react-native-linear-gradient';
 import {useAuth} from '../Components/AuthContext';
-
+import {Color} from '../GlobalStyles';
 const {width} = Dimensions.get('window');
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
+import { TextInput } from 'react-native-gesture-handler';
+import {launchImageLibrary} from 'react-native-image-picker';
+
 
 const ProfileScreen = ({navigation}) => {
   const [doctor, setDoctor] = useState([]);
+  const [startTime, setStartTime] = useState(doctor.start_time || '');
+const [endTime, setEndTime] = useState(doctor.end_time || '');
+
+const [isStartPickerVisible, setStartPickerVisible] = useState(false);
+const [isEndPickerVisible, setEndPickerVisible] = useState(false);
+
   const [review, setReview] = useState(0);
   const {logout, user} = useAuth();
   useEffect(() => {
     fetchDoctor();
   }, []);
+const handleConfirmStart = (date) => {
+  const time = date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+  setStartTime(time);
+  setStartPickerVisible(false);
+};
 
-  // const fetchDoctor = async () => {
-  //   try {
-  //     const token = await AsyncStorage.getItem('userToken');
-  //     const response = await axios.get(`${BaseUrl}/get-doctor-app-profile`, {
-  //       headers: {
-  //         Authorization: `Bearer ${token}`,
-  //       },
-  //     });
-  //     setDoctor(response.data);
-  //     setReview(response.data.reviews.length);
-  //     console.log('rev count', review);
-  //     console.log('doctor:', response.data);
-  //   } catch (error) {
-  //     console.error('Error fetching doctor:', error);
-  //   }
-  // };
+const handleConfirmEnd = (date) => {
+  const time = date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+  setEndTime(time);
+  setEndPickerVisible(false);
+};
+const handleSelectImage = async () => {
+  try {
+    const result = await launchImageLibrary({
+      mediaType: 'photo',
+      quality: 0.8,
+    });
+
+    if (result.didCancel) {
+      console.log('User cancelled image picker');
+    } else if (result.errorCode) {
+      console.log('ImagePicker Error: ', result.errorMessage);
+    } else if (result.assets && result.assets.length > 0) {
+      const uri = result.assets[0].uri;
+      setDoctor(prev => ({...prev, image_url: uri}));
+    }
+  } catch (error) {
+    console.error('Image picker error:', error);
+  }
+};
+
+
+
+
+console.log('ImagePicker lib', launchImageLibrary);
+
+
   const fetchDoctor = async () => {
     try {
       const token = await AsyncStorage.getItem('userToken');
@@ -63,294 +93,141 @@ const ProfileScreen = ({navigation}) => {
       console.error('Error fetching profile:', error);
     }
   };
-  const DoctorProfile = () => {
-    return (
-      <LinearGradient
-        colors={['#f5f7fa', '#e4e8f0']}
-        style={styles.gradientContainer}>
-        <ScrollView style={styles.container}>
-          <View style={styles.header}>
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              style={styles.backButton}>
-              <FontAwesome name="chevron-left" size={20} color="#fff" />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.profileContainer}>
-            {/* Profile Image with Glow Effect */}
-            <View style={styles.imageGlowContainer}>
-              <Image
-                source={{
-                  uri: doctor.image_url
-                    ? doctor.image_url
-                    : 'https://via.placeholder.com/100',
-                }}
-                style={styles.profileImage}
-              />
-            </View>
-
-            {/* Name with Typography Hierarchy */}
-            <View style={styles.nameContainer}>
-              <Text style={styles.nameText}>
-                {doctor.first_name} {doctor.last_name}
-              </Text>
-              <Text style={styles.specialtyText}>
-                {doctor.specialist?.title || 'General Practitioner'}
-              </Text>
-            </View>
-
-            {/* Stats Cards with Glass Morphism */}
-            <View style={styles.cardContainer}>
-              <View
-                style={[
-                  styles.card,
-                  styles.cardGlow,
-                  {borderColor: '#5e72e4'},
-                ]}>
-                <View style={styles.cardIconContainer}>
-                  <FontAwesome name="users" size={20} color="#5e72e4" />
-                </View>
-                <Text style={styles.cardTitle}>Patients</Text>
-                <Text style={styles.cardValue}>
-                  {doctor.total_patients || 0}
-                </Text>
-              </View>
-
-              <View
-                style={[
-                  styles.card,
-                  styles.cardGlow,
-                  {borderColor: '#11cdef'},
-                ]}>
-                <View style={styles.cardIconContainer}>
-                  <FontAwesome name="star" size={20} color="#11cdef" />
-                </View>
-                <Text style={styles.cardTitle}>Reviews</Text>
-                <Text style={styles.cardValue}>{review || 0}</Text>
-              </View>
-
-              <View
-                style={[
-                  styles.card,
-                  styles.cardGlow,
-                  {borderColor: '#2dce89'},
-                ]}>
-                <View style={styles.cardIconContainer}>
-                  <FontAwesome name="briefcase" size={20} color="#2dce89" />
-                </View>
-                <Text style={styles.cardTitle}>Experience</Text>
-                <Text style={styles.cardValue}>
-                  {doctor.experience || '5+'} yrs
-                </Text>
-              </View>
-
-              <View
-                style={[
-                  styles.card,
-                  styles.cardGlow,
-                  {borderColor: '#f5365c'},
-                ]}>
-                <View style={styles.cardIconContainer}>
-                  <FontAwesome name="stethoscope" size={20} color="#f5365c" />
-                </View>
-                <Text style={styles.cardTitle}>Specialty</Text>
-                <Text style={styles.cardValue}>
-                  {doctor.specialist?.title || 'General'}
-                </Text>
-              </View>
-            </View>
-
-            {/* About Section */}
-            <View
-              style={[
-                styles.sectionContainer,
-                styles.aboutContainer,
-                {borderColor: '#5e72e4'},
-              ]}>
-              <Text style={[styles.sectionTitle, {color: '#5e72e4'}]}>
-                About Me
-              </Text>
-              <Text style={styles.aboutText}>
-                {doctor.bio ||
-                  `Dr. ${doctor.first_name} ${
-                    doctor.last_name
-                  } is a dedicated physician with over ${
-                    doctor.experience || '5'
-                  } years of experience in providing exceptional care. Being a premium doctor, you can book your appointments any time.`}
-              </Text>
-            </View>
-
-            {/* Reviews Section */}
-            <View
-              style={[
-                styles.sectionContainer,
-                styles.reviewsContainer,
-                {borderColor: '#11cdef'},
-              ]}>
-              <Text style={[styles.sectionTitle, {color: '#11cdef'}]}>
-                Patient Reviews
-              </Text>
-              {doctor.reviews && doctor.reviews.length > 0 ? (
-                doctor.reviews.map((item, index) => (
-                  <View
-                    key={index}
-                    style={[styles.reviewCard, {borderBottomColor: '#e9ecef'}]}>
-                    <View style={styles.reviewHeader}>
-                      <Text style={styles.reviewerName}>
-                        {item.user.name || 'Anonymous'}
-                      </Text>
-                      <View style={styles.ratingContainer}>
-                        {Array.from({length: item.rating || 0}).map((_, i) => (
-                          <FontAwesome
-                            key={i}
-                            name="star"
-                            size={14}
-                            color="#FFD700"
-                          />
-                        ))}
-                      </View>
-                    </View>
-                    <Text style={styles.reviewText}>
-                      {item.comments || 'No comment provided.'}
-                    </Text>
-                    <Text style={styles.reviewDate}>
-                      {new Date(item.created_at).toLocaleDateString()}
-                    </Text>
-                  </View>
-                ))
-              ) : (
-                <View style={styles.noReviewsContainer}>
-                  <FontAwesome name="comment-o" size={40} color="#c9c9c9" />
-                  <Text style={styles.noReviewsText}>No reviews yet</Text>
-                </View>
-              )}
-            </View>
-          </View>
-        </ScrollView>
-      </LinearGradient>
-    );
-  };
-  const HospitalProfile = () => {
-    return (
-      <LinearGradient
-        colors={['#f5f7fa', '#e4e8f0']}
-        style={styles.gradientContainer}>
-        <ScrollView style={styles.container}>
-          <View style={styles.header}>
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              style={styles.backButton}>
-              <FontAwesome name="chevron-left" size={20} color="#fff" />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.profileContainer}>
-            {/* Profile Image with Glow Effect */}
-            <View style={styles.imageGlowContainer}>
-              <Image
-                source={{
-                  uri: doctor.image_url
-                    ? doctor.image_url
-                    : 'https://via.placeholder.com/100',
-                }}
-                style={styles.profileImage}
-              />
-            </View>
-
-            {/* Name with Typography Hierarchy */}
-            <View style={styles.nameContainer}>
-              <Text style={styles.nameText}>
-                {doctor.hospital_name}
-              </Text>
-              
-            </View>
-
-            {/* Stats Cards with Glass Morphism */}
-            <View style={styles.cardContainer}>
-              <View
-                style={[
-                  styles.card,
-                  styles.cardGlow,
-                  {borderColor: '#5e72e4'},
-                ]}>
-                <View style={styles.cardIconContainer}>
-                  <FontAwesome name="users" size={20} color="#5e72e4" />
-                </View>
-                <Text style={styles.cardTitle}>Patients</Text>
-                <Text style={styles.cardValue}>
-                  {doctor.total_patients || 0}
-                </Text>
-              </View>
-
-              <View
-                style={[
-                  styles.card,
-                  styles.cardGlow,
-                  {borderColor: '#11cdef'},
-                ]}>
-                <View style={styles.cardIconContainer}>
-                  <FontAwesome name="star" size={20} color="#11cdef" />
-                </View>
-                <Text style={styles.cardTitle}>Reviews</Text>
-                <Text style={styles.cardValue}>{review || 0}</Text>
-              </View>
-
-            
-
-           
-            </View>
-
-            {/* About Section */}
-            <View
-              style={[
-                styles.sectionContainer,
-                styles.aboutContainer,
-                {borderColor: '#5e72e4'},
-              ]}>
-              <Text style={[styles.sectionTitle, {color: '#5e72e4'}]}>
-                Hospital Details
-              </Text>
-              <Text style={styles.aboutText}>
-              {doctor.detail || 'No description available'}
-              </Text>
-              <Text style={[styles.addressText, {color: '#5e72e4'}]}>
-              Address
-              </Text>
-              <Text style={styles.aboutText}>
-              {doctor.google_address || 'No description available'}
-              </Text>
-              <Text style={[styles.addressText, {color: '#5e72e4'}]}>
-                Contact Number
-              </Text>
-              <Text style={styles.aboutText}>
-              {doctor.phone || 'No description available'}
-              </Text>
-              <Text style={[styles.addressText, {color: '#5e72e4'}]}>
-                Email
-              </Text>
-              <Text style={styles.aboutText}>
-              {doctor.email || 'No description available'}
-              </Text>
-            </View>
-
-            
-          </View>
-        </ScrollView>
-      </LinearGradient>
-    );
-  };
-  return (
-    <>
-    {user?.type === 'doctor' ? (
-      <DoctorProfile />
-    ) : user?.type === 'hospital' ? (
-      <HospitalProfile />
-    ) : null}
-  </>
+const handleUpdateProfile = async () => {
   
+  
+};
+  
+  
+
+  return (
+    <LinearGradient
+      colors={['#f5f7fa', '#e4e8f0']}
+      style={styles.gradientContainer}>
+      <ScrollView style={styles.container}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+  <View style={styles.backCircle}>
+    <FontAwesome name="chevron-left" size={16} color="#fff" />
+  </View>
+</TouchableOpacity>
+
+
+        <View style={styles.profileContainer}>
+<View style={styles.imageWrapper}>
+  <Image
+    source={{
+      uri: doctor.image_url
+        ? doctor.image_url
+        : 'https://via.placeholder.com/100',
+    }}
+    style={styles.profileImage}
+  />
+  <TouchableOpacity onPress={handleSelectImage} style={styles.editIconWrapper}>
+    <FontAwesome name="pencil" size={16} color="white" />
+  </TouchableOpacity>
+</View>
+
+
+          <Text style={styles.nameText}>{doctor.hospital_name || 'Hospital Name'}</Text>
+
+          {/* Stats: Patients / Reviews */}
+          <View style={styles.statsRow}>
+            <View style={styles.statsCard}>
+                <View style={styles.backCircle}>
+              <FontAwesome name="users" size={16} color="white" /></View>
+              <Text style={styles.statsLabel}>Patients</Text>
+              <Text style={styles.statsValue}>{doctor.total_patients || 0}</Text>
+            </View>
+            <View style={styles.statsCard}>
+              <View style={styles.backCircle}>
+              <FontAwesome name="star" size={20} color="white" /></View>
+              <Text style={styles.statsLabel}>Reviews</Text>
+              <Text style={styles.statsValue}>{review || 0}</Text>
+            </View>
+          </View>
+
+          {/* Clinic Detail Section */}
+       {/* Clinic Detail Section */}
+<View style={styles.detailCard}>
+  <Text style={styles.detailTitle}>Hospital Detail</Text>
+
+
+  <Text style={styles.detailLabel}>Description</Text>
+  <TextInput
+    style={[styles.detailField, { height: 'auto', textAlignVertical: 'top' }]}
+    value={doctor.detail}
+    onChangeText={(text) => setDoctor({...doctor, detail: text})}
+    placeholder="Clinic Description"
+    multiline
+  />
+
+  <Text style={styles.detailLabel}>Address</Text>
+  <TextInput
+  style={[styles.detailField, { height: 'auto', textAlignVertical: 'top' }]}
+    value={doctor.google_address}
+    onChangeText={(text) => setDoctor({...doctor, google_address: text})}
+    placeholder="Address"
+    multiline
+  />
+
+  <Text style={styles.detailLabel}>Phone</Text>
+  <TextInput
+    style={styles.detailField}
+    value={doctor.phone}
+    onChangeText={(text) => setDoctor({...doctor, phone: text})}
+    placeholder="Phone"
+    keyboardType="phone-pad"
+  />
+
+  <Text style={styles.detailLabel}>Email</Text>
+  <TextInput
+    style={styles.detailField}
+    value={doctor.email}
+    onChangeText={(text) => setDoctor({...doctor, email: text})}
+    placeholder="Email"
+    keyboardType="email-address"
+  />
+
+  <View style={styles.timeRow}>
+    <View style={{flex: 1}}>
+      <Text style={styles.timeLabel}>Start Time</Text>
+      <TouchableOpacity onPress={() => setStartPickerVisible(true)}>
+        <Text style={styles.timeBox}>{startTime || '10:00am'}</Text>
+      </TouchableOpacity>
+      <DateTimePickerModal
+        isVisible={isStartPickerVisible}
+        mode="time"
+        onConfirm={handleConfirmStart}
+        onCancel={() => setStartPickerVisible(false)}
+      />
+    </View>
+    <View style={{flex: 1}}>
+      <Text style={styles.timeLabel}>End Time</Text>
+      <TouchableOpacity style={styles.time} onPress={() => setEndPickerVisible(true)}>
+        <Text style={styles.timeBox}>{endTime || '10:00pm'}</Text>
+      </TouchableOpacity>
+      <DateTimePickerModal
+        isVisible={isEndPickerVisible}
+        mode="time"
+        onConfirm={handleConfirmEnd}
+        onCancel={() => setEndPickerVisible(false)}
+      />
+    </View>
+  </View>
+
+  {/* Update Button */}
+  <TouchableOpacity style={styles.updateButton} onPress={handleUpdateProfile}>
+    <Text style={styles.updateButtonText}>Update Profile</Text>
+  </TouchableOpacity>
+</View>
+
+        </View>
+      </ScrollView>
+    </LinearGradient>
   );
 };
+
+
 
 const styles = StyleSheet.create({
   gradientContainer: {
@@ -359,44 +236,48 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    backgroundColor: '#274A8A',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 18,
-    shadowColor: '#5e72e4',
-    shadowOffset: {width: 0, height: 10},
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
-  },
+
+backCircle: {
+  width: 36,
+  height: 36,
+  borderRadius: 18,
+  backgroundColor: Color.blue1, // red background
+  justifyContent: 'center',
+  alignItems: 'center',
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.3,
+  shadowRadius: 4,
+  elevation: 4,
+},
+
   backButton: {
     padding: 8,
   },
   profileContainer: {
     alignItems: 'center',
     paddingBottom: 30,
+  
   },
-  imageGlowContainer: {
-    width: width * 0.4,
-    height: width * 0.4,
-    borderRadius: (width * 0.4) / 2,
-    backgroundColor: 'rgba(94, 114, 228, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: -width * 0.1,
-    shadowColor: '#5e72e4',
-    shadowOffset: {width: 0, height: 0},
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    borderWidth: 2,
-    borderColor: '#5e72e4',
-  },
+  imageWrapper: {
+  position: 'relative',
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+
+editIconWrapper: {
+  position: 'absolute',
+  bottom: 5,
+  right: 5,
+  backgroundColor: 'rgba(0,0,0,0.6)',
+  borderRadius: 20,
+  padding: 6,
+},
+
+
   profileImage: {
-    width: width * 0.38,
-    height: width * 0.38,
+    width: width * 0.3,
+    height: width * 0.3,
     borderRadius: (width * 0.38) / 2,
     borderWidth: 4,
     borderColor: '#42b883',
@@ -409,7 +290,7 @@ const styles = StyleSheet.create({
   nameText: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#666',
+    color: Color.blue1,
     fontFamily: 'sans-serif-medium',
   },
   specialtyText: {
@@ -478,7 +359,7 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   aboutText: {
-    fontSize: 14,
+    fontSize: 18,
     color: '#4a5568',
     lineHeight: 22,
   },
@@ -523,7 +404,126 @@ const styles = StyleSheet.create({
   addressText:{
     paddingTop:10,
 fontWeight:700
-  }
+  },
+  statsRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-around',
+  marginVertical: 40,
+  width: '90%',
+},
+
+statsCard: {
+  backgroundColor: '#fff',
+  width: '45%',
+  alignItems: 'center',
+  paddingVertical: 16,
+  borderRadius: 12,
+  borderWidth:1,
+  borderColor: Color.blue1,
+  elevation: 7,
+  shadowColor: '#000',
+  shadowOpacity: 0.1,
+  shadowRadius: 6,
+},
+
+statsLabel: {
+  marginTop: 6,
+  color: '#555',
+  fontSize: 14,
+},
+
+statsValue: {
+  fontWeight: 'bold',
+  fontSize: 18,
+  marginTop: 4,
+  color: Color.blue1,
+},
+
+detailCard: {
+  width: '90%',
+  backgroundColor: '#fff',
+  padding: 20,
+  borderRadius: 16,
+  elevation: 5,
+  shadowColor: '#000',
+  shadowOpacity: 0.1,
+  shadowRadius: 10,
+  marginBottom: 40,
+},
+
+detailTitle: {
+  fontSize: 18,
+  fontWeight: 'bold',
+  marginBottom: 4,
+  color: '#333',
+},
+
+detailDesc: {
+  fontSize: 13,
+  color: '#666',
+  marginBottom: 16,
+},
+
+detailLabel: {
+  fontSize: 13,
+  fontWeight: '500',
+  marginTop: 10,
+  color: '#555',
+},
+
+detailField: {
+  backgroundColor: '#eef0ff',
+  padding: 10,
+  borderRadius: 8,
+  marginTop: 4,
+  fontSize: 14,
+  color: '#333',
+},
+timeLabel: {
+  fontSize: 13,
+  fontWeight: '500',
+ 
+  textAlign: 'center',
+  color: '#555',
+},
+timeRow: {
+  flexDirection: 'row',
+  justifyContent: 'center',
+  marginTop: 16,
+  padding: 10,
+  gap: 8,
+},
+
+timeBox: {
+  margin: 10,
+  backgroundColor: '#eef0ff',
+  padding: 10,
+  borderRadius: 8,
+  textAlign: 'center',
+  color: '#333',
+  fontWeight:'bold',
+  width: '90%'
+},
+updateButton: {
+  marginTop: 20,
+  backgroundColor: Color.blue1,
+  paddingVertical: 12,
+  borderRadius: 8,
+  alignItems: 'center',
+},
+updateButtonText: {
+  color: '#fff',
+  fontSize: 16,
+  fontWeight: 'bold',
+},
+editImageText: {
+  marginTop: 8,
+  textAlign: 'center',
+  color: '#007bff',
+  fontSize: 14,
+},
+
+
 });
 
 export default ProfileScreen;

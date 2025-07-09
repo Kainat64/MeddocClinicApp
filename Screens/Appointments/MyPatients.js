@@ -134,7 +134,7 @@ const MyPatients = ({navigation}) => {
       <View style={styles.backButtonContainer}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.navigate('Home')}>
+          onPress={() => navigation.navigate(' Home ')}>
           <Text style={styles.backText}>Back To Home</Text>
         </TouchableOpacity>
       </View>

@@ -5,7 +5,10 @@ import { Color } from '../../GlobalStyles';
 import styles from './styles';
 
 const MetricsGrid = ({ metrics, navigation }) => (
+  <View style={styles.container}>
+      <Text style={styles.sectionTitle}>Quick Actions</Text>
   <View style={styles.servicesGrid}>
+    
     {metrics.map((item, index) => (
       <TouchableOpacity
         key={index}
@@ -22,6 +25,7 @@ const MetricsGrid = ({ metrics, navigation }) => (
         <Text style={styles.serviceName}>{item.name}</Text>
       </TouchableOpacity>
     ))}
+    </View>
   </View>
 );
 
