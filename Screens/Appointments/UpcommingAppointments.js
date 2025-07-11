@@ -9,9 +9,8 @@ const { width } = Dimensions.get('window');
 import Ionicons from "react-native-vector-icons/Ionicons";
 import moment from 'moment';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { Color } from '../../GlobalStyles';
 
-const UpcomingAppointments = ({navigation}) => {
+const UpcommingAppointments = ({navigation}) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [filteredAppointments, setFilteredAppointments] = useState([]);
     const [appointments, setAppointments] = useState([]);
@@ -20,19 +19,16 @@ const UpcomingAppointments = ({navigation}) => {
     const [filterDate, setFilterDate] = useState(null);
 const [isFilterDatePickerVisible, setIsFilterDatePickerVisible] = useState(false);
 useEffect(() => {
-  const query = searchQuery?.toLowerCase() || '';
-
   const filtered = appointments.filter(appointment => {
-    const name = appointment?.user?.name?.toLowerCase() || '';
-    const date = appointment?.date?.toLowerCase?.() || '';
-    const time = appointment?.time?.toLowerCase?.() || '';
-
+    // Search filter
+    const query = searchQuery.toLowerCase();
     const matchesSearch = (
-      name.includes(query) ||
-      date.includes(query) ||
-      time.includes(query)
+      appointment.user?.name?.toLowerCase().includes(query) ||
+      appointment.date.toLowerCase().includes(query) ||
+      appointment.time.toLowerCase().includes(query)
     );
 
+    // Date filter
     let matchesDate = true;
     if (filterDate) {
       const formattedFilterDate = moment(filterDate).format('YYYY-MM-DD');
@@ -41,11 +37,9 @@ useEffect(() => {
 
     return matchesSearch && matchesDate;
   });
-
   setFilteredAppointments(filtered);
 }, [searchQuery, appointments, filterDate]);
-
-    const getUpcomingAppointments = async () => {
+    const getUpcommingAppointments = async () => {
         try {
             const token = await AsyncStorage.getItem('userToken');
             const response = await axios.get(`${BaseUrl}/get-upcoming-appointments-bydoctor`, {
@@ -60,7 +54,7 @@ useEffect(() => {
         }
     };
        useEffect(() => {
-        getUpcomingAppointments();
+        getUpcommingAppointments();
     }, []);
     const getStatusStyle = (status) => {
       return parseInt(status) === 1 ? styles.confirmedStatus : styles.pendingStatus;
@@ -71,14 +65,23 @@ useEffect(() => {
   if (type === 1) return styles.onSiteAppointment;
   if (type === 2) return styles.videoConsultation;
   return styles.voiceConsultation; // For type 3 or any other fallback
-};
- // Add appointments to dependencies
+};useEffect(() => {
+    // Filter appointments based on search query across multiple fields
+    const filtered = appointments.filter(appointment => {
+        const query = searchQuery.toLowerCase();
+        return (
+            appointment.user?.name?.toLowerCase().includes(query) ||
+            appointment.date.toLowerCase().includes(query) ||
+            appointment.time.toLowerCase().includes(query)
+        );
+    });
+    setFilteredAppointments(filtered);
+}, [searchQuery, appointments]); // Add appointments to dependencies
     return (
       <View style={{flex: 1}}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-              <View style={styles.backCircle}>
-            <Ionicons name="arrow-back" size={24} color="#fff" /></View>
+            <Ionicons name="arrow-back" size={24} color="black" />
           </TouchableOpacity>
           <Text style={styles.headerText}>Upcoming Appointments</Text>
         </View>
@@ -180,7 +183,26 @@ useEffect(() => {
                                    </View>
                                    )}
 
-             
+                    {/* Type */}
+                    {/* <View style={styles.infoRow}>
+                      <Ionicons
+                        name="call-outline"
+                        size={18}
+                        color="#888"
+                        style={styles.icon}
+                      />
+                      <Text
+                        style={
+                          appointment.type === 1
+                            ? styles.videoConsultation
+                            : styles.onSiteAppointment
+                        }>
+                        {appointment.type === 1
+                          ? 'Video Consultation'
+                          : 'On-site Appointment'}
+                      </Text>
+                    </View> */}
+
                     {/* Status */}
                     <View style={styles.infoRow}>
                       <Ionicons
@@ -260,19 +282,6 @@ const styles = StyleSheet.create({
         color:"#000",
 marginLeft:10,
     },
-    backCircle: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: Color.blue1, // red background
-      justifyContent: 'center',
-      alignItems: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.3,
-      shadowRadius: 4,
-      elevation: 4,
-    },
     backButton: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -323,13 +332,13 @@ dateFilterButton: {
 
   borderRadius: 10,
   borderWidth:1,
-  borderColor:Color.blue1,
+  borderColor:'#274A8A',
   flex: 1,
 
 },
 dateFilterText: {
   marginLeft: 8,
-  color: Color.blue1,
+  color: '#274A8A',
 },
 clearDateFilterButton: {
   padding: 10,
@@ -357,9 +366,9 @@ clearDateFilterText: {
         elevation: 2,
     },
     doctorImage: {
-        width: "30%",
-        height: "100%",
-        borderRadius: 8,
+        width: 60,
+        height: 60,
+        borderRadius: 30,
         marginRight: 10,
     },
     details: {
@@ -443,4 +452,4 @@ clearDateFilterText: {
   
 
 });
-export default UpcomingAppointments;
+export default UpcommingAppointments;
