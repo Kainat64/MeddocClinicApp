@@ -109,6 +109,7 @@ const countAppointments = useCallback(async () => {
     setTotalAppointments(response.data.totalAppointments);
     setCountPatients(response.data.countPatient);
   }, []);
+
 const fetchBlog = useCallback(async () => {
     const token = await AsyncStorage.getItem('userToken');
     const response = await axios.get(`${BaseUrl}/blog-posts`, {

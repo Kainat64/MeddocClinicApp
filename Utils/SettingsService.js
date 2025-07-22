@@ -32,10 +32,3 @@ export const getSetting = (key) => {
   }
   return appSettings[key];
 };
-
-export const getSettings = () => {
-  if (!appSettings) {
-    throw new Error('Settings not loaded. Call fetchSettings() first.');
-  }
-  return appSettings;
-};

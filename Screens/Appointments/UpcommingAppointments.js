@@ -1,5 +1,6 @@
+
 import React, {useState, useEffect} from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions, ScrollView, TextInput, Alert, Linking  } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions, ScrollView, TextInput, Alert, Linking, ActivityIndicator  } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BaseUrl } from '../../Utils/BaseApi';
 import axios from 'axios';
@@ -9,7 +10,9 @@ const { width } = Dimensions.get('window');
 import Ionicons from "react-native-vector-icons/Ionicons";
 import moment from 'moment';
 import Icon from 'react-native-vector-icons/Ionicons';
-
+import FilterModal from './FilterModal';
+import { RefreshControl } from 'react-native';
+import { Color } from '../../GlobalStyles';
 const UpcommingAppointments = ({navigation}) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [filteredAppointments, setFilteredAppointments] = useState([]);
@@ -17,30 +20,61 @@ const UpcommingAppointments = ({navigation}) => {
    
     const [newDate, setNewDate] = useState(new Date());
     const [filterDate, setFilterDate] = useState(null);
-const [isFilterDatePickerVisible, setIsFilterDatePickerVisible] = useState(false);
+    const [filterStatus, setFilterStatus] = useState(null); // 1: Confirmed, 0: Pending
+const [filterType, setFilterType] = useState(null);     // 1: On-site, 2: Video, 3: Voice
+const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
+const [loading, setLoading] = useState(true);
+const [refreshing, setRefreshing] = useState(false);
+
+const handleClearFilters = () => {
+  setFilterStatus(null);
+  setFilterType(null);
+  setFilterDate(null);
+};
 useEffect(() => {
   const filtered = appointments.filter(appointment => {
-    // Search filter
     const query = searchQuery.toLowerCase();
-    const matchesSearch = (
-      appointment.user?.name?.toLowerCase().includes(query) ||
-      appointment.date.toLowerCase().includes(query) ||
-      appointment.time.toLowerCase().includes(query)
-    );
 
-    // Date filter
+    const userName = appointment?.user?.name
+      ? appointment.user.name.toLowerCase()
+      : '';
+
+    const date = appointment?.date ? appointment.date.toLowerCase() : '';
+
+    // Only convert to lowercase if time exists
+    const time = appointment?.time ? appointment.time.toLowerCase() : '';
+
+   const matchesSearch =
+  userName.includes(query) ||
+  date.includes(query) ||
+  (appointment.time && time.includes(query));
+
     let matchesDate = true;
     if (filterDate) {
       const formattedFilterDate = moment(filterDate).format('YYYY-MM-DD');
       matchesDate = appointment.date === formattedFilterDate;
     }
 
-    return matchesSearch && matchesDate;
+    let matchesStatus = true;
+    if (filterStatus !== null) {
+      matchesStatus = parseInt(appointment.status) === filterStatus;
+    }
+
+    let matchesType = true;
+    if (filterType !== null) {
+      matchesType = parseInt(appointment.types) === filterType;
+    }
+
+    return matchesSearch && matchesDate && matchesStatus && matchesType;
   });
+
   setFilteredAppointments(filtered);
-}, [searchQuery, appointments, filterDate]);
+}, [searchQuery, appointments, filterDate, filterStatus, filterType]);
+
+
     const getUpcommingAppointments = async () => {
         try {
+          setLoading(true);
             const token = await AsyncStorage.getItem('userToken');
             const response = await axios.get(`${BaseUrl}/get-upcoming-appointments-bydoctor`, {
                 headers: {
@@ -48,10 +82,13 @@ useEffect(() => {
                 },
             });
             setAppointments(response.data);
-            console.log('UpcommingAppointments:', response.data);
+            // console.log('UpcommingAppointments:', response.data);
         } catch (error) {
             console.error('Error fetching appointment:', error);
         }
+        finally {
+    setLoading(false);
+  }
     };
        useEffect(() => {
         getUpcommingAppointments();
@@ -65,20 +102,28 @@ useEffect(() => {
   if (type === 1) return styles.onSiteAppointment;
   if (type === 2) return styles.videoConsultation;
   return styles.voiceConsultation; // For type 3 or any other fallback
-};useEffect(() => {
-    // Filter appointments based on search query across multiple fields
-    const filtered = appointments.filter(appointment => {
-        const query = searchQuery.toLowerCase();
-        return (
-            appointment.user?.name?.toLowerCase().includes(query) ||
-            appointment.date.toLowerCase().includes(query) ||
-            appointment.time.toLowerCase().includes(query)
-        );
-    });
-    setFilteredAppointments(filtered);
-}, [searchQuery, appointments]); // Add appointments to dependencies
+};
+const onRefresh = async () => {
+    try {
+        setRefreshing(true);
+
+        // Clear search and filters
+        setSearchQuery('');
+        setFilterDate(null);
+        setFilterStatus(null);
+        setFilterType(null);
+
+        await getUpcommingAppointments();
+    } finally {
+        setRefreshing(false);
+    }
+};
+
+
     return (
-      <View style={{flex: 1}}>
+      <ScrollView style={{flex: 1}}  refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Color.blue1]} />
+    }>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color="black" />
@@ -104,41 +149,77 @@ useEffect(() => {
             />
           </View>
 {/* Date Filter */}
-<View style={styles.dateFilterContainer}>
-  <TouchableOpacity 
-    style={styles.dateFilterButton}
-    onPress={() => setIsFilterDatePickerVisible(true)}
+<View
+  style={{
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginHorizontal: 15,
+    marginVertical: 10,
+  }}
+>
+  {/* Filters Button (Left) */}
+  <TouchableOpacity
+    onPress={() => setIsFilterModalVisible(true)}
+    style={{
+      paddingVertical: 10,
+      paddingHorizontal: 20,
+      backgroundColor: Color.blue1,
+      borderRadius: 25,
+      flexDirection: 'row',
+      alignItems: 'center',
+    }}
   >
-    <Ionicons name="calendar-outline" size={20} color="#274A8A" />
-    <Text style={styles.dateFilterText}>
-      {filterDate ? moment(filterDate).format('MMM D, YYYY') : 'Filter by Date'}
-    </Text>
+    <Ionicons name="filter-outline" size={20} color="#fff" style={{ marginRight: 6 }} />
+    <Text style={{ color: '#fff', fontWeight: '600' }}>Filters</Text>
   </TouchableOpacity>
-  {filterDate && (
-    <TouchableOpacity 
-      style={styles.clearDateFilterButton}
-      onPress={() => setFilterDate(null)}
-    >
-      <Text style={styles.clearDateFilterText}>Clear</Text>
-    </TouchableOpacity>
-  )}
+
+  {/* Clear Button (Right) */}
+  <TouchableOpacity
+    onPress={() => {
+      setFilterStatus(null);
+      setFilterType(null);
+      setFilterDate(null);
+    }}
+    style={{
+      paddingVertical: 10,
+      paddingHorizontal: 20,
+      backgroundColor: Color.secondary, // light gray
+      borderRadius: 25,
+      flexDirection: 'row',
+      alignItems: 'center',
+    }}
+  >
+    <Ionicons name="refresh-outline" size={18} color={Color.blue1} style={{ marginRight: 6 }} />
+    <Text style={{ color: Color.blue1, fontWeight: '600' }}>Clear</Text>
+  </TouchableOpacity>
 </View>
 
-<DateTimePickerModal
-  isVisible={isFilterDatePickerVisible}
-  mode="date"
-  onConfirm={(date) => {
-    setFilterDate(date);
-    setIsFilterDatePickerVisible(false);
-  }}
-  onCancel={() => setIsFilterDatePickerVisible(false)}
+
+<FilterModal
+  visible={isFilterModalVisible}
+  onClose={() => setIsFilterModalVisible(false)}
+  filterStatus={filterStatus}
+  setFilterStatus={setFilterStatus}
+  filterType={filterType}
+  setFilterType={setFilterType}
+  filterDate={filterDate}
+  setFilterDate={setFilterDate}
+  onClearFilters={handleClearFilters}
 />
+
+
+
           {/* Conditional rendering */}
-         {filteredAppointments.length === 0 ? (
-        <Text style={styles.noAppointmentsText}>
-          {searchQuery ? 'No results found' : 'No upcoming appointments'}
-        </Text>
-      ) : (
+
+ {
+    loading ? (
+        <ActivityIndicator size="large" color={Color.blue1} style={{ marginTop: 50 }} />
+    ) : appointments.length === 0 ? (
+        <Text style={styles.noAppointmentsText}>No appointments found</Text>
+    ) : filteredAppointments.length === 0 ? (
+        <Text style={styles.noAppointmentsText}>No results found</Text>
+    ) : (
         filteredAppointments.map(appointment => (
 
               <View key={appointment.id} style={styles.cardContainer}>
@@ -160,9 +241,9 @@ useEffect(() => {
                     {/* Date */}
                     <View style={styles.infoRow}>
                       <Ionicons
-                        name="calendar-outline"
+                        name="calendar"
                         size={18}
-                        color="#888"
+                        color={Color.blue1}
                         style={styles.icon}
                       />
                       <Text style={styles.hospital}>{appointment.date}</Text>
@@ -172,9 +253,9 @@ useEffect(() => {
                     {Number(appointment.types) !== 1 && (
                                    <View style={styles.infoRow}>
                                      <Icon
-                                       name="time-outline"
+                                       name="time"
                                        size={18}
-                                       color="#888"
+                                       color={Color.blue1}
                                        style={styles.icon}
                                      />
                                      <Text style={styles.time}>
@@ -204,40 +285,35 @@ useEffect(() => {
                     </View> */}
 
                     {/* Status */}
-                    <View style={styles.infoRow}>
-                      <Ionicons
-                        name="alert-circle-outline"
-                        size={18}
-                        color={
-                          parseInt(appointment.status) === 1 ? 'green' : 'red'
-                        }
-                        style={{marginRight: 8}}
-                      />
-
-                      <Text style={getStatusStyle(appointment.status)}>
-                        {parseInt(appointment.status) === 1
-                          ? 'Confirmed'
-                          : 'Pending'}
-                      </Text>
-                    </View>
+                  <View style={styles.infoRow}>
+    <Ionicons
+        name={parseInt(appointment.status) === 1 ? 'checkmark-circle-outline' : 'alert-circle-outline'}
+        size={18}
+        color={parseInt(appointment.status) === 1 ? 'green' : 'red'}
+        style={{ marginRight: 8 }}
+    />
+    <Text style={getStatusStyle(appointment.status)}>
+        {parseInt(appointment.status) === 1 ? 'Confirmed' : 'Pending'}
+    </Text>
+</View>
 
                   
                                   <View style={styles.infoRow}>
                                 <Icon
                                   name={
                                     parseInt(appointment.types) === 1
-                                      ? 'location-outline'
+                                      ? 'location'
                                       : parseInt(appointment.types) === 2
-                                      ? 'camera-outline'
-                                      : 'call-outline'
+                                      ? 'camera'
+                                      : 'call'
                                   }
                                   size={18}
                                   color={
                                     parseInt(appointment.types) === 1
-                                      ? 'green'
+                                      ? Color.blue1
                                       : parseInt(appointment.types) === 2
-                                      ? '#5FC3E4'
-                                      : 'orange'
+                                      ? Color.blue1
+                                      : Color.blue1
                                   }
                                   style={styles.icon}
                                 />
@@ -258,7 +334,7 @@ useEffect(() => {
             ))
           )}
         </ScrollView>
-      </View>
+      </ScrollView>
     );
 }
 const styles = StyleSheet.create({
@@ -366,10 +442,10 @@ clearDateFilterText: {
         elevation: 2,
     },
     doctorImage: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        marginRight: 10,
+        width: "35%",
+        height: "100%",
+        borderRadius: 8,
+        marginRight: 20,
     },
     details: {
         flex: 1,
@@ -382,27 +458,27 @@ clearDateFilterText: {
     },
     hospital: {
         fontSize: 14,
-        color: '#888',
+      color: Color.blue1,
     },
     time: {
         fontSize: 14,
-        color: '#666',
+        color: Color.blue1,
     },
   
      videoConsultation: {
     fontSize: 14,
-    color: '#5FC3E4',
+ color: Color.blue1,
     fontWeight: 'bold',
   
   },
   voiceConsultation:{
      fontSize: 14,
-    color: 'orange',
+ color: Color.blue1,
     fontWeight:'bold'
   },
   onSiteAppointment: {
     fontSize: 14,
-    color: 'green',
+    color: Color.blue1,
     fontWeight:'bold'
   },
     infoRow: {
@@ -430,7 +506,7 @@ clearDateFilterText: {
         backgroundColor: '#347474',
     },
     cancelButton: {
-        backgroundColor: '#e46161',
+        backgroundColor: 'red',
     },
     meetButton: {
         backgroundColor: '#274A8A',
@@ -446,9 +522,43 @@ clearDateFilterText: {
     },
     pendingStatus: {
         fontSize: 14,
-        color: 'pink',
+        color: 'red',
         fontWeight: 'bold',
     },
+    filterSection: {
+  paddingHorizontal: 15,
+  marginTop: 10,
+  marginBottom: 10,
+},
+filterHeading: {
+  fontSize: 16,
+  fontWeight: '600',
+  marginBottom: 5,
+  color: '#333',
+},
+filterRow: {
+  flexDirection: 'row',
+  marginBottom: 10,
+  flexWrap: 'wrap',
+},
+filterButton: {
+  paddingVertical: 6,
+  paddingHorizontal: 14,
+  borderWidth: 1,
+  borderColor: '#999',
+  borderRadius: 20,
+  marginRight: 10,
+  marginBottom: 8,
+},
+filterButtonActive: {
+  backgroundColor: '#274A8A',
+  borderColor: '#274A8A',
+},
+filterText: {
+  color: '#333',
+  fontSize: 14,
+},
+
   
 
 });

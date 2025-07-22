@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -10,12 +10,13 @@ import {
   TextInput,
   Alert,
   Linking,
-  ActivityIndicator,
 } from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {BaseUrl} from '../../Utils/BaseApi';
 import axios from 'axios';
+import { RefreshControl } from 'react-native';
+
 // Get screen dimensions
 const {width} = Dimensions.get('window');
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -23,6 +24,9 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import moment from 'moment';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {useNavigation} from '@react-navigation/native';
+import FilterModal from './FilterModal';
+import { ActivityIndicator } from 'react-native';
+import { Color } from '../../GlobalStyles';
 const TodayAppointments = () => {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
@@ -31,7 +35,58 @@ const TodayAppointments = () => {
   const [isDatePickerVisible, setIsDatePickerVisible] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [newDate, setNewDate] = useState(new Date());
-   const [isLoading, setIsLoading] = useState(true); // Added loading state
+   const [filterDate, setFilterDate] = useState(null);
+      const [filterStatus, setFilterStatus] = useState(null); // 1: Confirmed, 0: Pending
+  const [filterType, setFilterType] = useState(null);     // 1: On-site, 2: Video, 3: Voice
+  const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
+  const [loading, setLoading] = useState(true);
+const [refreshing, setRefreshing] = useState(false);
+
+  const handleClearFilters = () => {
+    setFilterStatus(null);
+    setFilterType(null);
+    setFilterDate(null);
+  };
+  useEffect(() => {
+    const filtered = appointments.filter(appointment => {
+      const query = searchQuery.toLowerCase();
+  
+      const userName = appointment?.user?.name
+        ? appointment.user.name.toLowerCase()
+        : '';
+  
+      const date = appointment?.date ? appointment.date.toLowerCase() : '';
+  
+      // Only convert to lowercase if time exists
+      const time = appointment?.time ? appointment.time.toLowerCase() : '';
+  
+     const matchesSearch =
+    userName.includes(query) ||
+    date.includes(query) ||
+    (appointment.time && time.includes(query));
+  
+      let matchesDate = true;
+      if (filterDate) {
+        const formattedFilterDate = moment(filterDate).format('YYYY-MM-DD');
+        matchesDate = appointment.date === formattedFilterDate;
+      }
+  
+      let matchesStatus = true;
+      if (filterStatus !== null) {
+        matchesStatus = parseInt(appointment.status) === filterStatus;
+      }
+  
+      let matchesType = true;
+      if (filterType !== null) {
+        matchesType = parseInt(appointment.types) === filterType;
+      }
+  
+      return matchesSearch && matchesDate && matchesStatus && matchesType;
+    });
+  
+    setFilteredAppointments(filtered);
+  }, [searchQuery, appointments, filterDate, filterStatus, filterType]);
+  
   const getStatusColor = status => {
     switch (status) {
       case 1:
@@ -44,51 +99,57 @@ const TodayAppointments = () => {
         return 'pink';
     }
   };
-  useEffect(() => {
-    const interval = setInterval(() => {
-      getTodayAppointments();
-    }, 5000); // 5000 ms = 5 seconds
+useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+        getTodayAppointments();
+    });
+    return unsubscribe;
+}, [navigation]);
 
-    // Cleanup interval on unmount
-    return () => clearInterval(interval);
-  }, []);
+const getTodayAppointments = async () => {
+  try {
+    setLoading(true);
+    const token = await AsyncStorage.getItem('userToken');
+    const response = await axios.get(
+      `${BaseUrl}/get-today-appointments-bydoctor`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    );
+    setAppointments(response.data);
+  } catch (error) {
+    console.error('Error fetching appointment:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
- const getTodayAppointments = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const token = await AsyncStorage.getItem('userToken');
-      const response = await axios.get(
-        `${BaseUrl}/get-today-appointments-bydoctor`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setAppointments(response.data);
-    } catch (error) {
-      console.error('Error fetching appointments:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-  const getStatusStyle = useCallback((status)  => {
+  const getStatusStyle = status => {
     return parseInt(status) === 1
       ? styles.confirmedStatus
       : styles.pendingStatus;
-  }, [])
+  };
 
-const getTypeStatus = useCallback((types) => {
+const getTypeStatus = types => {
   const type = parseInt(types);
   if (type === 1) return styles.onSiteAppointment;
   if (type === 2) return styles.videoConsultation;
   return styles.voiceConsultation; // For type 3 or any other fallback
-}, [])
-
-  useEffect(() => {
-const filtered = appointments.filter(appointment =>
-  appointment.hospital?.hospital_name?.toLowerCase().includes(searchQuery.toLowerCase())
-
-
-    );
+};useEffect(() => {
+    // Filter appointments based on search query across multiple fields
+    const filtered = appointments.filter(appointment => {
+        const query = searchQuery.toLowerCase();
+        return (
+            appointment.user?.name?.toLowerCase().includes(query) ||
+            appointment.date.toLowerCase().includes(query) ||
+            (appointment.time && appointment.time.toLowerCase().includes(query)) 
+        );
+    });
     setFilteredAppointments(filtered);
-  }, [appointments, searchQuery]); // Update when searchQuery changes
+}, [searchQuery, appointments]); // Add appointments to dependencies
+  
   const confirmAppointmentPrompt = appointment => {
     Alert.alert(
       'Confirm Appointment',
@@ -107,7 +168,7 @@ const filtered = appointments.filter(appointment =>
     );
   };
 
-  const handleConfirmAppointment =useCallback( async (appointment) => {
+  const handleConfirmAppointment = async appointment => {
     console.log('Starting appointment confirmation:', appointment);
     try {
       const token = await AsyncStorage.getItem('userToken');
@@ -130,18 +191,19 @@ const filtered = appointments.filter(appointment =>
 
       if (response.data.success) {
         Alert.alert('Success', 'Appointment confirmed successfully!');
-
-        console.log('Appointment Type:', appointment.types);
+ await getTodayAppointments();
+        // console.log('Appointment Type:', appointment.types);
 
         if (parseInt(appointment.types) === 2) {
           console.log('Creating Zoom meeting for video consultation...');
           await saveZoomMeeting(appointment);
-          getTodayAppointments(); // Refresh appointments
+          await getTodayAppointments();
         }
         if (parseInt(appointment.types) === 3) {
           console.log('Creating Zoom meeting for Voice consultation...');
           await saveVoiceZoomMeeting(appointment);
-          getTodayAppointments(); // Refresh appointments
+        await getTodayAppointments();
+
         }
       } else {
         console.warn('API responded with failure:', response.data);
@@ -154,9 +216,9 @@ const filtered = appointments.filter(appointment =>
         'An error occurred while confirming the appointment.',
       );
     }
-    }, []);
+  };
 
-  const saveZoomMeeting = useCallback(async (appointment) => {
+  const saveZoomMeeting = async appointment => {
     try {
       console.log('saveZoomMeeting called for:', appointment);
 
@@ -194,9 +256,9 @@ const filtered = appointments.filter(appointment =>
         'An error occurred while creating the Zoom meeting.',
       );
     }
-    }, []);
+  };
 
-  const saveVoiceZoomMeeting = useCallback(async (appointment) => {
+  const saveVoiceZoomMeeting = async appointment => {
     try {
       console.log('saveZoomMeeting called for:', appointment);
 
@@ -234,10 +296,9 @@ const filtered = appointments.filter(appointment =>
         'An error occurred while creating the Zoom meeting.',
       );
     }
-  },[]);
+  };
 
-
-  const openMeetingLink =useCallback(async (appointment) => {
+  const openMeetingLink = async appointment => {
     try {
       const token = await AsyncStorage.getItem('userToken');
       const response = await axios.post(
@@ -275,120 +336,81 @@ const filtered = appointments.filter(appointment =>
         'An error occurred while fetching the meeting link.',
       );
     }
-  },[]);
+  };
 
+  const handleRescheduleAppointment = async newDate => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      const formattedNewDate = moment(newDate).format('YYYY-MM-DD');
 
-const handleRescheduleAppointment = useCallback(async (newDate) => {
-  if (!selectedAppointment || !selectedAppointment.id) {
-    console.warn('Selected appointment is null or missing ID');
-    Alert.alert('Error', 'No appointment selected for rescheduling.');
-    return;
-  }
-
-  try {
-    const token = await AsyncStorage.getItem('userToken');
-    const formattedNewDate = moment(newDate).format('YYYY-MM-DD');
-
-    const response = await axios.post(
-      `${BaseUrl}/update-appointment-date`,
-      {
-        appointment_id: selectedAppointment.id,
-        new_date: formattedNewDate,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
+      const response = await axios.post(
+        `${BaseUrl}/update-appointment-date`,
+        {
+          appointment_id: selectedAppointment.id,
+          new_date: formattedNewDate,
         },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+      console.log(newDate);
+
+      if (response.data.success) {
+        Alert.alert('Success', 'Appointment rescheduled successfully!');
+ await getTodayAppointments();
+
+      } else {
+        Alert.alert('Error', 'Failed to reschedule appointment.');
       }
-    );
-
-    console.log('Rescheduled to:', newDate);
-
-    if (response.data.success) {
-      Alert.alert('Success', 'Appointment rescheduled successfully!');
-      getTodayAppointments(); // Refresh updated list
-    } else {
-      Alert.alert('Error', 'Failed to reschedule appointment.');
+    } catch (error) {
+      console.error('Error rescheduling appointment:', error);
+      Alert.alert(
+        'Error',
+        'An error occurred while rescheduling the appointment.',
+      );
     }
-  } catch (error) {
-    console.error('Error rescheduling appointment:', error);
-    Alert.alert(
-      'Error',
-      'An error occurred while rescheduling the appointment.'
-    );
-  }
-}, [selectedAppointment]); // 👈 Add dependency
-
+  };
 
   const showDatePicker = appointment => {
     setSelectedAppointment(appointment);
     setIsDatePickerVisible(true);
   };
 
- const onDateChange = (event, selectedDate) => {
-  if (selectedDate) {
-    setIsDatePickerVisible(false);
-    setNewDate(selectedDate); // ✅ Keep Date object
+  const onDateChange = (event, selectedDate) => {
+    if (selectedDate) {
+      const formattedDate = moment(selectedDate).format('YYYY-MM-DD'); // Format the selected date
+      setIsDatePickerVisible(false); // Hide date picker
+      setNewDate(formattedDate); // Update the newDate state
 
-    if (selectedAppointment) {
-      const formattedDate = moment(selectedDate).format('YYYY-MM-DD');
-      handleRescheduleAppointment(formattedDate);
+      if (selectedAppointment) {
+        handleRescheduleAppointment(formattedDate); // Pass the formatted new date
+      }
     }
-  }
-};
-
+  };
   const handleJoinMeet = meetingId => {
     navigation.navigate('Join Meet', {meetingId});
     
   };
-useEffect(() => {
-  const query = searchQuery?.toLowerCase() || '';
-
-  const filtered = appointments.filter(appointment => {
-    const name = appointment.user?.name?.toLowerCase() || '';
-    const date = appointment.date?.toLowerCase() || '';
-    const time = appointment.time?.toLowerCase() || '';
-
-    return (
-      name.includes(query) ||
-      date.includes(query) ||
-      time.includes(query)
-    );
-  });
-
-  setFilteredAppointments(filtered);
-}, [searchQuery, appointments]);
- // Add appointments to dependencies
-const renderAppointmentCard = useCallback((appointment) => (
-    <View key={appointment.id} style={styles.cardContainer}>
-      {/* Card content - same as before */}
-    </View>
-  ), []);
- const renderContent = () => {
-    if (isLoading) {
-      return (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#274A8A" />
-        </View>
-      );
+const onRefresh = async () => {
+    try {
+        setRefreshing(true);
+        await getTodayAppointments();
+    } finally {
+        setRefreshing(false);
     }
-
-    if (filteredAppointments.length === 0) {
-      return (
-        <Text style={styles.noAppointmentsText}>
-          {searchQuery ? 'No results found' : 'No Appointments Today'}
-        </Text>
-      );
-    }
-
-    return filteredAppointments.map(renderAppointmentCard);
-  };
+};
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container }
+     contentContainerStyle={{ paddingBottom: 20 }}
+     refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Color.blue1]} />
+    }>
       <View style={styles.searchContainer}>
         <TouchableOpacity
-          onPress={() => navigation.navigate(' Home ')}
+          onPress={() => navigation.navigate('Home')}
           style={styles.backButton}>
           <FontAwesome name="chevron-left" size={20} color="#666" />
         </TouchableOpacity>
@@ -406,145 +428,187 @@ const renderAppointmentCard = useCallback((appointment) => (
           onChangeText={setSearchQuery}
         />
       </View>
-
-     {filteredAppointments.length > 0 &&
-  filteredAppointments.map(appointment => (
-          <View key={appointment.id} style={styles.cardContainer}>
-            <View style={styles.card}>
-            <Image
-  source={
-    appointment.user.image_url 
-      ? { uri: appointment.user.image_url }
-      : require('../../assets/images/avator.png')
-  }
-  style={styles.doctorImage}
-  onError={(error) => console.log('Image loading error:', error.nativeEvent.error)}
-/>
-              <View style={styles.details}>
-                <Text style={styles.doctorName}>
-                  {appointment.user.name}
-                </Text>
-
-                {/* Date */}
-                <View style={styles.infoRow}>
-                  <Icon
-                    name="calendar-outline"
-                    size={18}
-                    color="#888"
-                    style={styles.icon}
-                  />
-                  <Text style={styles.hospital}>{appointment.date}</Text>
-                </View>
-
-                {/* Time */}
-                {Number(appointment.types) !== 1 && (
-                <View style={styles.infoRow}>
-                  <Icon
-                    name="time-outline"
-                    size={18}
-                    color="#888"
-                    style={styles.icon}
-                  />
-                  <Text style={styles.time}>
-                    {moment(appointment.time, 'HH:mm').format('hh:mm A')}
-                  </Text>
-                </View>
-                )}
-                {/* Type */}
-   
-
-                {/* Status */}
-                <View style={styles.infoRow}>
-                  <Icon
-                    name="alert-circle-outline"
-                    size={18}
-                    color={
-                      parseInt(appointment.status) === 1 ? 'green' : 'red'
-                    }
-                    style={{marginRight: 8}}
-                  />
-
-                  <Text style={getStatusStyle(appointment.status)}>
-                    {parseInt(appointment.status) === 1
-                      ? 'Confirmed'
-                      : 'Pending'}
-                  </Text>
-                </View>
-
-                <View style={styles.infoRow}>
-              <Icon
-                name={
-                  parseInt(appointment.types) === 1
-                    ? 'location-outline'
-                    : parseInt(appointment.types) === 2
-                    ? 'camera-outline'
-                    : 'call-outline'
-                }
-                size={18}
-                color={
-                  parseInt(appointment.types) === 1
-                    ? 'green'
-                    : parseInt(appointment.types) === 2
-                    ? '#5FC3E4'
-                    : 'orange'
-                }
-                style={styles.icon}
-              />
-              <Text style={getTypeStatus(appointment.types)}>
-                {parseInt(appointment.types) === 1
-                  ? 'On Site Appointment'
-                  : parseInt(appointment.types) === 2
-                  ? 'Video Consultation'
-                  : 'Voice Consultation'}
-              </Text>
-            </View>
-          </View>
-              </View>
-           
-
-            {/* Actions below the card */}
-            <View style={styles.actions}>
-              {parseInt(appointment.status) !== 1 && (
-                <TouchableOpacity
-                  style={[styles.confirmButton, styles.button]}
-                  onPress={() => confirmAppointmentPrompt(appointment)}>
-                  <Text style={styles.buttonText}>Confirm</Text>
-                </TouchableOpacity>
-              )}
-              {parseInt(appointment.status) === 0 && (
-                <TouchableOpacity
-                  style={[styles.cancelButton, styles.button]}
-                  onPress={() => showDatePicker(appointment)}>
-                  <Text style={styles.buttonText}>Re Schedule</Text>
-                </TouchableOpacity>
-              )}
-
-              {parseInt(appointment.status) === 1 &&
-                (parseInt(appointment.types) === 2 ||
-                  parseInt(appointment.types) === 3) && (
-                  <TouchableOpacity
-                    style={[styles.meetButton, styles.button]}
-                    onPress={() => {
-  if (appointment.meet?.id) {
-    handleJoinMeet(appointment.meet.id);
-  } else {
-    Alert.alert('Error', 'Meeting link not available yet.');
-  }
-}}
+<View
+  style={{
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginHorizontal: 15,
+    marginVertical: 10,
+  }}
 >
-                    <Text style={styles.buttonText}>
-                      {parseInt(appointment.types) === 2
-                        ? 'Join Video Call'
-                        : 'Join Voice Call'}
-                    </Text>
-                  
-                  </TouchableOpacity>
-                )}
+  {/* Filters Button (Left) */}
+  <TouchableOpacity
+    onPress={() => setIsFilterModalVisible(true)}
+    style={{
+      paddingVertical: 10,
+      paddingHorizontal: 20,
+      backgroundColor: Color.blue1,
+      borderRadius: 25,
+      flexDirection: 'row',
+      alignItems: 'center',
+    }}
+  >
+    <Ionicons name="filter-outline" size={20} color="#fff" style={{ marginRight: 6 }} />
+    <Text style={{ color: '#fff', fontWeight: '600' }}>Filters</Text>
+  </TouchableOpacity>
+
+  {/* Clear Button (Right) */}
+  <TouchableOpacity
+    onPress={() => {
+      setFilterStatus(null);
+      setFilterType(null);
+      setFilterDate(null);
+    }}
+    style={{
+      paddingVertical: 10,
+      paddingHorizontal: 20,
+      backgroundColor: Color.secondary, // light gray
+      borderRadius: 25,
+      flexDirection: 'row',
+      alignItems: 'center',
+    }}
+  >
+    <Ionicons name="refresh-outline" size={18} color={Color.blue1} style={{ marginRight: 6 }} />
+    <Text style={{ color: Color.blue1, fontWeight: '600' }}>Clear</Text>
+  </TouchableOpacity>
+</View>
+
+
+<FilterModal
+  visible={isFilterModalVisible}
+  onClose={() => setIsFilterModalVisible(false)}
+  filterStatus={filterStatus}
+  setFilterStatus={setFilterStatus}
+  filterType={filterType}
+  setFilterType={setFilterType}
+  filterDate={filterDate}
+  setFilterDate={setFilterDate}
+  onClearFilters={handleClearFilters}
+/>
+
+      {/* Check if there are no appointments */}
+{
+    loading ? (
+        <ActivityIndicator size="large" color={Color.blue1} style={{ marginTop: 50 }} />
+    ) : appointments.length === 0 ? (
+        <Text style={styles.noAppointmentsText}>No appointments found</Text>
+    ) : filteredAppointments.length === 0 ? (
+        <Text style={styles.noAppointmentsText}>No results found</Text>
+    ) : (
+        filteredAppointments.map(appointment => (
+            <View key={appointment.id} style={styles.cardContainer}>
+                <View style={styles.card}>
+                    <View style={styles.row}>
+                        <Image
+                            source={
+                                appointment.user.image_url
+                                    ? { uri: appointment.user.image_url }
+                                    : require('../../assets/images/avator.png')
+                            }
+                            style={styles.doctorImage}
+                            onError={(error) => console.log('Image loading error:', error.nativeEvent.error)}
+                        />
+                        <View style={styles.details}>
+                            <Text style={styles.doctorName}>{appointment.user.name}</Text>
+
+                            {/* Date */}
+                            <View style={styles.infoRow}>
+                                <Icon name="calendar" size={18} color={Color.blue1} style={styles.icon} />
+                                <Text style={styles.hospital}>{appointment.date}</Text>
+                            </View>
+
+                            {/* Time */}
+                            {Number(appointment.types) !== 1 && (
+                                <View style={styles.infoRow}>
+                                    <Icon name="time" size={18} color={Color.blue1} style={styles.icon} />
+                                    <Text style={styles.time}>
+                                        {moment(appointment.time, 'HH:mm').format('hh:mm A')}
+                                    </Text>
+                                </View>
+                            )}
+
+                            {/* Status */}
+                           <View style={styles.infoRow}>
+    <Ionicons
+        name={parseInt(appointment.status) === 1 ? 'checkmark-circle' : 'alert-circle-outline'}
+        size={18}
+        color={parseInt(appointment.status) === 1 ? 'green' : 'red'}
+        style={{ marginRight: 8 }}
+    />
+    <Text style={getStatusStyle(appointment.status)}>
+        {parseInt(appointment.status) === 1 ? 'Confirmed' : 'Pending'}
+    </Text>
+</View>
+                            <View style={styles.infoRow}>
+                                <Icon
+                                    name={
+                                        parseInt(appointment.types) === 1
+                                            ? 'location'
+                                            : parseInt(appointment.types) === 2
+                                            ? 'camera'
+                                            : 'call'
+                                    }
+                                    size={18}
+                                    color={
+                                        parseInt(appointment.types) === 1
+                                            ? Color.blue1
+                                            : parseInt(appointment.types) === 2
+                                            ? Color.blue1
+                                            : Color.blue1
+                                    }
+                                    style={styles.icon}
+                                />
+                                <Text style={getTypeStatus(appointment.types)}>
+                                    {parseInt(appointment.types) === 1
+                                        ? 'On Site Appointment'
+                                        : parseInt(appointment.types) === 2
+                                        ? 'Video Consultation'
+                                        : 'Voice Consultation'}
+                                </Text>
+                            </View>
+                        </View>
+                    </View>
+
+                    <View style={styles.actions}>
+                        {parseInt(appointment.status) !== 1 && (
+                            <TouchableOpacity
+                                style={[styles.confirmButton, styles.button]}
+                                onPress={() => confirmAppointmentPrompt(appointment)}
+                            >
+                                <Text style={styles.buttonText}>Confirm</Text>
+                            </TouchableOpacity>
+                        )}
+
+                        {parseInt(appointment.status) === 0 && (
+                            <TouchableOpacity
+                                style={[styles.cancelButton, styles.button]}
+                                onPress={() => showDatePicker(appointment)}
+                            >
+                                <Text style={styles.rescheduleText}>Re Schedule</Text>
+                            </TouchableOpacity>
+                        )}
+
+                        {parseInt(appointment.status) === 1 &&
+                            (parseInt(appointment.types) === 2 || parseInt(appointment.types) === 3) && (
+                                <TouchableOpacity
+                                    style={[styles.meetButton, styles.button]}
+                                    onPress={() => handleJoinMeet(appointment.meet.id)}
+                                >
+                                    <Text style={styles.buttonText}>
+                                        {parseInt(appointment.types) === 2 ? 'Join Video Call' : 'Join Voice Call'}
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
+                    </View>
+                </View>
             </View>
-          </View>
-        ))}
-      
-  {renderContent()}
+        ))
+    )
+}
+
+
+
       {isDatePickerVisible && (
         <DateTimePicker
           value={newDate}
@@ -562,7 +626,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
     padding: 10,
+    paddingBottom: 50,
   },
+  row: {
+    flexDirection: 'row',
+    marginBottom: 10,
+ 
+},
+card: {
+    flexDirection: 'column', // changed from 'row'
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    marginVertical: 10,
+    padding: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 2,
+},
+
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -586,25 +668,16 @@ const styles = StyleSheet.create({
     color: '#333',
   },
 
-  card: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    marginVertical: 10,
-    padding: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 2,
-  },
+
   doctorImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginRight: 10,
+    width: "35%",
+        height: "100%",
+        borderRadius: 8,
+        marginRight: 10,
   },
   details: {
     flex: 1,
+    marginLeft: 10,
   },
   doctorName: {
     fontWeight: 'bold',
@@ -614,26 +687,26 @@ const styles = StyleSheet.create({
   },
   hospital: {
     fontSize: 14,
-    color: '#888',
+     color: Color.blue1,
   },
   time: {
     fontSize: 14,
-    color: '#666',
+     color: Color.blue1,
   },
   videoConsultation: {
     fontSize: 14,
-    color: '#5FC3E4',
+     color: Color.blue1,
     fontWeight: 'bold',
   
   },
   voiceConsultation:{
      fontSize: 14,
-    color: 'orange',
+   color: Color.blue1,
     fontWeight:'bold'
   },
   onSiteAppointment: {
     fontSize: 14,
-    color: 'green',
+    color: Color.blue1,
     fontWeight:'bold'
   },
   infoRow: {
@@ -643,33 +716,51 @@ const styles = StyleSheet.create({
   },
   icon: {
     marginRight: 8,
+    
   },
   actions: {
     flexDirection: 'row',
     marginTop: 10,
     justifyContent: 'space-between',
-    marginBottom:15
+    
   },
   button: {
     flex: 1,
-    height: 40,
+    height: 35,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 5,
+    borderRadius: 35,
     marginHorizontal: 5,
   },
   confirmButton: {
-    backgroundColor: '#274A8A',
+    backgroundColor: Color.blue1,
   },
   cancelButton: {
-    backgroundColor: '#e46161',
+    backgroundColor: Color.secondary, // light gray
   },
   meetButton: {
-    backgroundColor: '#25D366',
+    backgroundColor: 'green',
   },
+  rescheduleText:{
+    color: Color.blue1,
+    fontSize: 14,
+    fontWeight: '700',
+  
+  },
+  iconContainer: {
+    width: 30,
+    height: 30,
+    borderRadius: 15, // Makes it perfectly round
+    backgroundColor: Color.secondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+},
+
   buttonText: {
     color: '#fff',
     fontSize: 14,
+    fontWeight: '700',
   },
   confirmedStatus: {
     fontSize: 14,
@@ -690,6 +781,8 @@ const styles = StyleSheet.create({
   noAppointmentsText: {
     fontSize: 16,
     color: '#888',
+    textAlign: 'center',
+    marginTop: 20,
   },
 });
 

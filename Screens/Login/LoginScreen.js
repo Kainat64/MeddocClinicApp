@@ -31,11 +31,7 @@ const LoginScreen = ({ navigation }) => {
   };
 
   return (
-    <ImageBackground
-      source={require('../../assets/images/app_background.png')}
-      style={styles.background}
-      resizeMode="cover"
-    >
+  
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
@@ -115,7 +111,7 @@ const LoginScreen = ({ navigation }) => {
           </View>
         </View>
       </KeyboardAvoidingView>
-    </ImageBackground>
+ 
   );
 };
 
