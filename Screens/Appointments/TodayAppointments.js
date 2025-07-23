@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
   Text,
@@ -41,6 +41,10 @@ const TodayAppointments = () => {
   const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
   const [loading, setLoading] = useState(true);
 const [refreshing, setRefreshing] = useState(false);
+const [imageErrorIds, setImageErrorIds] = useState([]);
+const handleImageError = (id) => {
+    setImageErrorIds((prev) => [...prev, id]);
+};
 
   const handleClearFilters = () => {
     setFilterStatus(null);
@@ -338,57 +342,73 @@ const getTypeStatus = types => {
     }
   };
 
-  const handleRescheduleAppointment = async newDate => {
-    try {
-      const token = await AsyncStorage.getItem('userToken');
-      const formattedNewDate = moment(newDate).format('YYYY-MM-DD');
-
-      const response = await axios.post(
-        `${BaseUrl}/update-appointment-date`,
-        {
-          appointment_id: selectedAppointment.id,
-          new_date: formattedNewDate,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-      console.log(newDate);
-
-      if (response.data.success) {
-        Alert.alert('Success', 'Appointment rescheduled successfully!');
- await getTodayAppointments();
-
-      } else {
-        Alert.alert('Error', 'Failed to reschedule appointment.');
+ const handleRescheduleAppointment = useCallback(async (newDateObj) => {
+  if (!selectedAppointment || !selectedAppointment.id) {
+    console.warn('Selected appointment is null or missing ID');
+    Alert.alert('Error', 'No appointment selected for rescheduling.');
+    return;
+  }
+  try {
+    const token = await AsyncStorage.getItem('userToken');
+    const formattedNewDate = moment(newDateObj).format('YYYY-MM-DD');
+    const response = await axios.post(
+      `${BaseUrl}/update-appointment-date`,
+      {
+        appointment_id: selectedAppointment.id,
+        new_date: formattedNewDate,
+      },
+      {
+        headers: { Authorization: `Bearer ${token}` },
       }
-    } catch (error) {
-      console.error('Error rescheduling appointment:', error);
-      Alert.alert(
-        'Error',
-        'An error occurred while rescheduling the appointment.',
-      );
+    );
+
+    if (response.data.success) {
+      Alert.alert('Success', 'Appointment rescheduled successfully!');
+      setSelectedAppointment(null);  // 👈 Reset
+      setNewDate(new Date());        // 👈 Reset
+      getTodayAppointments();
+    } else {
+      Alert.alert('Error', 'Failed to reschedule appointment.');
     }
-  };
+  } catch (error) {
+    console.error('Error rescheduling appointment:', error);
+    Alert.alert('Error', 'An error occurred while rescheduling the appointment.');
+  }
+}, [selectedAppointment]);
+
 
   const showDatePicker = appointment => {
     setSelectedAppointment(appointment);
     setIsDatePickerVisible(true);
   };
+// const onDateChange = (event, selectedDate) => {
+//   if (selectedDate) {
+//     setIsDatePickerVisible(false);
+//     setNewDate(selectedDate);
+//     if (selectedAppointment) {
+//       handleRescheduleAppointment(selectedDate);  // Pass Date, not formatted string
+//     }
+//   }
+// };
+const onDateChange = (event, selectedDate) => {
+  if (selectedDate) {
+    const today = moment().startOf('day');
+    const pickedDate = moment(selectedDate).startOf('day');
 
-  const onDateChange = (event, selectedDate) => {
-    if (selectedDate) {
-      const formattedDate = moment(selectedDate).format('YYYY-MM-DD'); // Format the selected date
-      setIsDatePickerVisible(false); // Hide date picker
-      setNewDate(formattedDate); // Update the newDate state
-
-      if (selectedAppointment) {
-        handleRescheduleAppointment(formattedDate); // Pass the formatted new date
-      }
+    if (pickedDate.isBefore(today)) {
+      Alert.alert('Invalid Date', 'You cannot select a past date for rescheduling.');
+      setIsDatePickerVisible(false);
+      return;
     }
-  };
+
+    setIsDatePickerVisible(false);
+    setNewDate(selectedDate);
+    if (selectedAppointment) {
+      handleRescheduleAppointment(selectedDate);
+    }
+  }
+};
+
   const handleJoinMeet = meetingId => {
     navigation.navigate('Join Meet', {meetingId});
     
@@ -500,15 +520,16 @@ const onRefresh = async () => {
             <View key={appointment.id} style={styles.cardContainer}>
                 <View style={styles.card}>
                     <View style={styles.row}>
-                        <Image
-                            source={
-                                appointment.user.image_url
-                                    ? { uri: appointment.user.image_url }
-                                    : require('../../assets/images/avator.png')
-                            }
-                            style={styles.doctorImage}
-                            onError={(error) => console.log('Image loading error:', error.nativeEvent.error)}
-                        />
+                       <Image
+    source={
+        appointment.user.image_url && !imageErrorIds.includes(appointment.id)
+            ? { uri: appointment.user.image_url }
+            : require('../../assets/images/user.png')
+    }
+    style={styles.doctorImage}
+    onError={() => handleImageError(appointment.id)}
+/>
+
                         <View style={styles.details}>
                             <Text style={styles.doctorName}>{appointment.user.name}</Text>
 

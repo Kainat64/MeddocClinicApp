@@ -5,6 +5,7 @@ import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { BaseUrl } from '../../Utils/BaseApi';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Color } from '../../GlobalStyles';
 
 const PharmacyListScreen = ({ route, navigation }) => {
   const { appointmentId, patientId, patientName, medicinesIds, prescriptionDetails } = route.params;
@@ -79,7 +80,7 @@ const PharmacyListScreen = ({ route, navigation }) => {
             <FontAwesome
               name="medkit"
               size={36}
-              color="#003366"
+              color={Color.blue1}
               style={styles.icon}
             />
             <View style={styles.testInfo}>
@@ -178,7 +179,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 4,
-    color: '#274A8A',
+    color: Color.blue1,
   },
   reportTime: {
     color: '#666',
@@ -207,7 +208,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     flex: 1,
-    backgroundColor: '#003366',
+    backgroundColor: Color.blue1,
     paddingVertical: 12,
     borderRadius: 5,
     marginLeft: 8,

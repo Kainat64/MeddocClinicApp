@@ -19,7 +19,13 @@ import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 const PrescriptionHistoryScreen = ({navigation, route}) => {
   const [searchQuery, setSearchQuery] = useState('');
+
   const [prescriptions, setPrescriptions] = useState([]);
+  const [imageErrorIds, setImageErrorIds] = useState([]);
+  const handleImageError = (id) => {
+      setImageErrorIds((prev) => [...prev, id]);
+  };
+
   useEffect(() => {
     // Fetch immediately when component mounts
     fetchPrescription();
@@ -80,11 +86,15 @@ const PrescriptionHistoryScreen = ({navigation, route}) => {
         {filteredPrescriptions.map(prescription => (
             <View key={prescription.id} style={styles.cardContainer}>
     <View style={styles.card}>
-      <Image 
-        source={prescription.patient?.image_url ? 
-          { uri: prescription.patient.image_url } : 
-          require('../../assets/images/avator.png')} 
-        style={styles.image} 
+    
+       <Image
+          source={
+              prescription.patient.image_url && !imageErrorIds.includes(prescription.id)
+                  ? { uri: prescription.patient.image_url }
+                  : require('../../assets/images/user.png')
+          }
+          style={styles.image}
+          onError={() => handleImageError(prescription.id)}
       />
       <View style={styles.info}>
         <Text style={styles.name}>{prescription.patient?.name || 'Unknown Patient'}</Text>

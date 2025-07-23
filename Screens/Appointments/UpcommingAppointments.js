@@ -25,7 +25,10 @@ const [filterType, setFilterType] = useState(null);     // 1: On-site, 2: Video,
 const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
 const [loading, setLoading] = useState(true);
 const [refreshing, setRefreshing] = useState(false);
-
+const [imageErrorIds, setImageErrorIds] = useState([]);
+const handleImageError = (id) => {
+    setImageErrorIds((prev) => [...prev, id]);
+};
 const handleClearFilters = () => {
   setFilterStatus(null);
   setFilterType(null);
@@ -224,15 +227,16 @@ const onRefresh = async () => {
 
               <View key={appointment.id} style={styles.cardContainer}>
                 <View style={styles.card}>
-                  <Image
-                   source={
-                     appointment.user.image_url 
-                       ? { uri: appointment.user.image_url }
-                       : require('../../assets/images/avator.png')
-                   }
-                   style={styles.doctorImage}
-                   onError={(error) => console.log('Image loading error:', error.nativeEvent.error)}
-                 />
+                 <Image
+    source={
+        appointment.user.image_url && !imageErrorIds.includes(appointment.id)
+            ? { uri: appointment.user.image_url }
+            : require('../../assets/images/user.png')
+    }
+    style={styles.doctorImage}
+    onError={() => handleImageError(appointment.id)}
+/>
+
                   <View style={styles.details}>
                      <Text style={styles.doctorName}>
                                       {appointment.user.name}

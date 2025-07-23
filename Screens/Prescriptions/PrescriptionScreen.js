@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { BaseUrl } from '../../Utils/BaseApi';
 import axios from 'axios';
+import { Color } from '../../GlobalStyles';
 
 const PrescriptionScreen = ({ route, navigation }) => {
   const { appointmentId, patientId, patientName, medicinesIds = [] } = route.params || {};
@@ -164,6 +165,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     padding: 16,
+    gap: 10,
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#eee',
@@ -184,7 +186,7 @@ const styles = StyleSheet.create({
     backgroundColor:'#4CAF50',
   },
   backButton: {
-    backgroundColor: '#003366', 
+    backgroundColor: Color.blue1, 
   },
   disabledButton: {
     backgroundColor: '#cccccc',

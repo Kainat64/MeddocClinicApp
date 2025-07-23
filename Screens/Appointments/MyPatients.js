@@ -34,7 +34,7 @@ const MyPatients = ({navigation}) => {
           },
         },
       );
-      //console.log('Appointment Response:', response.data.appointments);
+     
       setAppointments(response.data.appointments);
     } catch (error) {
       console.error('Error fetching appointment:', error);
@@ -74,10 +74,16 @@ const MyPatients = ({navigation}) => {
          <View key={appointment.id} style={styles.cardContainer}>
   <View style={styles.card}>
     <View style={styles.row}>
-      <Image
-        source={require('../../assets/images/avator.png')}
-        style={styles.image}
-      />
+ <Image
+  source={
+    appointment.image_url
+      ? { uri: appointment.image_url }
+      : require('../../assets/images/user.png') // fallback
+  }
+  style={styles.image}
+  resizeMode="cover"
+/>
+
       <View style={styles.info}>
         <Text style={styles.name}>{appointment.first_name}</Text>
         <View style={styles.hospitalRow}>
@@ -179,9 +185,9 @@ const styles = StyleSheet.create({
   },
  
   image: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: '35%',
+    height: '100%',
+    borderRadius: 8,
     marginRight: 16,
   },
   info: {

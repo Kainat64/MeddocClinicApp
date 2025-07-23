@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import DateTimePicker from '@react-native-community/datetimepicker'; // Add this import
+import { Color } from '../../GlobalStyles';
 
 const SummaryScreen = ({ route }) => {
   const navigation = useNavigation();
@@ -54,7 +55,7 @@ const SummaryScreen = ({ route }) => {
         },
       });
       setUser(response.data);
-      console.log('user:', response.data.name);
+      console.log('user:', response.data);
     } catch (error) {
       console.error('Error fetching user:', error);
     }
@@ -155,16 +156,19 @@ const SummaryScreen = ({ route }) => {
         {/* Patient Card */}
         <View style={styles.card}>
           <View style={styles.sectionHeader}>
-            <FontAwesome name="user" size={18} color="#274A8A" style={styles.icon} />
+            {/* <FontAwesome name="user" size={18} color={Color.blue1} style={styles.icon} /> */}
             <Text style={styles.cardTitle}>Patient Information</Text>
           </View>
           <View style={styles.patientInfo}>
-            {user.image && (
-              <Image
-                source={{ uri: user.image }}
-                style={styles.profileImage}
-              />
-            )}
+            {user.image_url && (
+  <Image
+    source={{ uri: user.image_url }}
+    style={styles.profileImage}
+    resizeMode="cover"
+    onError={() => console.log('Image failed to load')}
+  />
+)}
+
             <View style={styles.patientTextContainer}>
               <Text style={styles.patientName}>{patientName}</Text>
               <Text style={styles.patientId}>ID: {patientId}</Text>
@@ -176,7 +180,7 @@ const SummaryScreen = ({ route }) => {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Selected Pharmacy</Text>
           <View style={styles.pharmacyInfo}>
-            <FontAwesome name="building" size={20} color="#274A8A" />
+            <FontAwesome name="building" size={20} color={Color.blue1} />
             <Text style={styles.pharmacyName}>{pharmacy.name}</Text>
           </View>
           {pharmacy.address && (
@@ -190,15 +194,16 @@ const SummaryScreen = ({ route }) => {
         {/* Next Appointment Date Picker */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Next Appointment</Text>
+          <View style={styles.pharmacyInfo}>
           <TouchableOpacity 
             style={styles.datePickerButton}
             onPress={() => setShowDatePicker(true)}
           >
-            <FontAwesome name="calendar" size={20} color="#274A8A" style={styles.icon} />
+            <FontAwesome name="calendar" size={20} color={Color.blue1}  style={styles.icon} />
             <Text style={styles.dateText}>
               {formatDate(nextAppointmentDate)}
             </Text>
-          </TouchableOpacity>
+          </TouchableOpacity></View>
           {showDatePicker && (
             <DateTimePicker
               value={nextAppointmentDate}
@@ -217,7 +222,7 @@ const SummaryScreen = ({ route }) => {
           return (
             <View key={index} style={styles.medicineCard}>
               <View style={styles.medicineHeader}>
-                <FontAwesome name="medkit" size={20} color="#274A8A" />
+                <FontAwesome name="medkit" size={20} color={Color.blue1} />
                 <Text style={styles.medicineName}>{medicine.name}</Text>
               </View>
               <View style={styles.prescriptionDetail}>
@@ -278,7 +283,7 @@ const styles = StyleSheet.create({
     paddingBottom: 80,
   },
   header: {
-    backgroundColor: '#274A8A',
+    backgroundColor: Color.blue1,
     paddingVertical: 15,
     paddingHorizontal: 20,
     flexDirection: 'row',
@@ -307,7 +312,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#274A8A',
+    color: Color.blue1,
     marginBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
@@ -332,8 +337,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   icon: {
-    marginRight: 8,
-    marginTop: -20,
+  
+  
   },
   patientName: {
     fontSize: 18,
@@ -369,7 +374,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#274A8A',
+    color: Color.blue1,
     marginHorizontal: 16,
     marginTop: 24,
     marginBottom: 12,
@@ -431,7 +436,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cancelButton: {
-    backgroundColor: '#274A8A',
+    backgroundColor: Color.blue1,
     marginRight: 8,
   },
   confirmButton: {

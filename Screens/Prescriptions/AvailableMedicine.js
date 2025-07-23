@@ -10,6 +10,7 @@ import {
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { BaseUrl } from '../../Utils/BaseApi';
 import axios from 'axios';
+import { Color } from '../../GlobalStyles';
 
 const AvailableMedicine = ({ route, navigation }) => {
  
@@ -184,7 +185,7 @@ const styles = StyleSheet.create({
   },
   confirmButton: {
     flex: 1,
-    backgroundColor: '#003366',
+    backgroundColor: Color.blue1,
     paddingVertical: 12,
     borderRadius: 5,
     marginLeft: 10,
