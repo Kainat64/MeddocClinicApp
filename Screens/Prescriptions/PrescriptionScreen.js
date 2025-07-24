@@ -78,14 +78,14 @@ const PrescriptionScreen = ({ route, navigation }) => {
       appointmentId,
       patientId,
       patientName,
-      medicinesIds: medicinesIds.map(med => med.id),
+      medicinesIds,
       prescriptionDetails,
     });
   };
 
   return (
-    <View style={{ flex: 1 }}>
-      <ScrollView style={styles.container}>
+    <View style={{ flex: 1}}>
+      <ScrollView style={[styles.container, { marginBottom: 80 }]}>
         {prescriptionDetails.map((med, index) => (
           <View key={index} style={styles.medicineContainer}>
             <Text style={styles.medicineName}>{med.medicineName}</Text>
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f4f4f4',
   },
   medicineContainer: {
-    marginBottom: 20,
+    marginBottom: 30,
     backgroundColor: '#fff',
     padding: 15,
     borderRadius: 10,

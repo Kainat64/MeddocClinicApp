@@ -31,12 +31,14 @@ const SummaryScreen = ({ route }) => {
   const fetchMedicines = async () => {
     try {
       const medicineDetails = await Promise.all(
-        medicinesIds.map(async (medicineId) => {
-          const url = `${BaseUrl}/get-single-medicine/${medicineId}`;
-          console.log("Fetching from URL:", url);
-          const response = await axios.get(url);
-          return response.data;
-        })
+        
+      medicinesIds.map(async (medicine) => {
+  const url = `${BaseUrl}/get-single-medicine/${medicine.id}`;
+  console.log("Fetching from URL:", url);
+  const response = await axios.get(url);
+  return response.data;
+})
+
       );
       setMedicines(medicineDetails);
     } catch (error) {
