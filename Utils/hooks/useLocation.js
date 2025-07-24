@@ -1,56 +1,65 @@
 import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import GetLocation from 'react-native-get-location';
-import { getSetting } from '../SettingsService';
+import { fetchAppSettings, getSetting } from '../SettingsService';
 
 const useLocation = () => {
   const [cityName, setCityName] = useState('');
   const [locationError, setLocationError] = useState(null);
 
   useEffect(() => {
-  const getCurrentLocation = () => {
-    GetLocation.getCurrentPosition({
-      enableHighAccuracy: true,
-      timeout: 60000,
-    })
-      .then(location => {
+    const init = async () => {
+      try {
+        // Wait for settings to load
+        await fetchAppSettings();
+
+        // Now it's safe to get the API key
+        const googleMapsApiKey = Platform.OS === 'android'
+          ? getSetting('android_sdk_api_key')
+          : getSetting('ios_sdk_api_key');
+
+        if (!googleMapsApiKey) {
+          console.warn('Google Maps API key is missing');
+          setLocationError('API key missing');
+          return;
+        }
+
+        // Get current location
+        const location = await GetLocation.getCurrentPosition({
+          enableHighAccuracy: true,
+          timeout: 60000,
+        });
+
         const { latitude, longitude } = location;
-        getCityNameFromCoords(latitude, longitude);
-      })
-      .catch(error => {
-        console.warn(error.code, error.message);
-      });
-  };
 
-   const googleMapsApiKey = Platform.OS === 'android'
-  ? getSetting('android_sdk_api_key')
-  : getSetting('ios_sdk_api_key');
-  const getCityNameFromCoords = async (latitude, longitude) => {
-const API_KEY = googleMapsApiKey;
+        // Call reverse geocoding
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${googleMapsApiKey}`;
+        const response = await fetch(url);
+        const data = await response.json();
 
- console.log(" API key",API_KEY )
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${API_KEY}`;
+        console.log("Google Maps API response", data);
 
-    try {
-      const response = await fetch(url);
-      const data = await response.json();
-      console.log("Google Maps API response", data);
-      if (data.results.length > 0) {
-        const cityName = data.results[0].address_components.find(component =>
-          component.types.includes('locality'),
-        ).long_name;
-        setCityName(cityName);
-         console.log("give me city name", cityName)
-      } else {
-        setCityName('City not found');
+        if (data.results.length > 0) {
+          const cityComponent = data.results[0].address_components.find(component =>
+            component.types.includes('locality')
+          );
+          if (cityComponent) {
+            setCityName(cityComponent.long_name);
+            console.log("City name:", cityComponent.long_name);
+          } else {
+            setCityName('City not found');
+          }
+        } else {
+          setCityName('City not found');
+        }
+
+      } catch (error) {
+        console.error('Error getting location:', error);
+        setLocationError(error.message);
       }
-     
-    } catch (error) {
-      console.error('Error in reverse geocoding: ', error);
-    }
-  };
+    };
 
-    getCurrentLocation();
+    init();
   }, []);
 
   return { cityName, locationError };

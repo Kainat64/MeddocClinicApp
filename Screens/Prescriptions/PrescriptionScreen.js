@@ -10,7 +10,7 @@ const PrescriptionScreen = ({ route, navigation }) => {
   const [prescriptionDetails, setPrescriptionDetails] = useState([]);
 
   // Fetch medicine details whenever medicinesIds changes
-  useEffect(() => {
+  useEffect(() => {   
     const fetchMedicines = async () => {
       try {
         const medicineDetails = await Promise.all(
